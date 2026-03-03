@@ -498,7 +498,7 @@ function createTextSprite(text) {
   context.clearRect(0, 0, canvas.width, canvas.height);
   
   // Text style
-  context.font = 'bold 32px Poppins';
+  context.font = 'bold 32px Inter, system-ui, sans-serif';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   

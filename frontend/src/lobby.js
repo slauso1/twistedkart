@@ -7,12 +7,12 @@ const API_BASE_URL = (() => {
 
   if (typeof window !== 'undefined') {
     if (window.location.hostname === 'localhost') {
-      return 'http://localhost:8000';
+      return 'http://localhost:8002';
     }
     return window.location.origin.replace(/\/$/, '');
   }
 
-  return 'http://localhost:8000';
+  return 'http://localhost:8002';
 })();
 
 const PARTY_CODES_ENDPOINT = `${API_BASE_URL}/api/party-codes`;
@@ -83,108 +83,48 @@ class RacingLobby {
       
       // Initialize player name with random name
       this.playerNameInput.value = this.playerName;
+      
+      // Update document title
+      document.title = "SuperTuxKart Web";
     }
-    
-    initPeerJS() {
-      // Create a new Peer with a random ID
-      this.peer = new Peer();
-      
-      this.peer.on('open', (id) => {
-        this.playerId = id;
-        // Store playerId in localStorage so it persists between pages
-        localStorage.setItem('myPlayerId', id);
-        console.log('My peer ID is: ' + id);
-      });
-      
-      this.peer.on('connection', (conn) => {
-        this.handleIncomingConnection(conn);
-      });
-      
-      this.peer.on('error', (err) => {
-        console.error('Peer connection error:', err);
-        
-        if (err.type === 'peer-unavailable') {
-          this.joinStatus.textContent = 'Could not find that party. Check the code and try again.';
-        } else {
-          this.joinStatus.textContent = `Connection error: ${err.type}`;
-        }
-      });
-    }
-    
+
     attachEventListeners() {
       // Create party button
-      this.createPartyBtn.addEventListener('click', () => {
-        this.createParty();
-      });
-      
+      this.createPartyBtn.addEventListener('click', () => this.createParty());
+
+      // Host stop button
+      this.hostStopBtn.addEventListener('click', () => this.stopHosting());
+
       // Copy code button
       this.copyCodeBtn.addEventListener('click', () => {
-        navigator.clipboard.writeText(this.partyCodeDisplay.textContent)
-          .then(() => {
-            this.copyCodeBtn.textContent = 'Copied!';
-            setTimeout(() => this.copyCodeBtn.textContent = 'Copy', 2000);
-          })
-          .catch(err => {
-            console.error('Failed to copy: ', err);
-          });
+        const code = this.partyCodeDisplay.textContent;
+        navigator.clipboard.writeText(code).then(() => {
+          this.copyCodeBtn.textContent = 'Copied!';
+          setTimeout(() => { this.copyCodeBtn.textContent = 'Copy'; }, 1500);
+        }).catch(() => {});
       });
-      
+
       // Join party button
       this.joinPartyBtn.addEventListener('click', () => {
-        const inputVal = this.joinCodeInput.value.trim();
-        if (inputVal) {
-          // Do not force uppercase here; full Peer IDs are case-sensitive
-          this.joinParty(inputVal);
-        } else {
-          this.joinStatus.textContent = 'Please enter a party code or Peer ID';
+        const code = this.joinCodeInput.value.trim();
+        if (code) this.joinParty(code);
+      });
+
+      // Enter key on join input
+      this.joinCodeInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          const code = this.joinCodeInput.value.trim();
+          if (code) this.joinParty(code);
         }
       });
-      
-      // Player name input - update player name when changed
+
+      // Player name sync
       this.playerNameInput.addEventListener('input', () => {
-        this.playerName = this.playerNameInput.value.trim() || `Player_${Math.floor(Math.random() * 10000)}`;
-        
-        // Update name in player list if we're in a party
-        if (this.players.length > 0) {
-          const currentPlayer = this.players.find(p => p.id === this.playerId);
-          if (currentPlayer) {
-            currentPlayer.name = this.playerName;
-            
-            // If host, broadcast to all players
-            if (this.isHost) {
-              this.broadcastToAll({
-                type: 'partyState',
-                players: this.players,
-                trackId: this.selectedMap
-              });
-            } else if (this.hostId) {
-              // If guest, send update to host
-              this.sendToHost({
-                type: 'playerUpdate',
-                playerId: this.playerId,
-                playerName: this.playerName,
-                playerColor: sessionStorage.getItem('carColor') || 'red'
-              });
-            }
-          }
-          this.updatePlayerList();
-        }
+        this.playerName = this.playerNameInput.value.trim() || this.playerName;
       });
-      
-      // Stop hosting button
-      this.hostStopBtn.addEventListener('click', () => {
-        if (this.isHost) {
-          this.stopHosting();
-        }
-      });
-      
-      // Play button - modify logic to start multiplayer game without checking ready status
+
+      // Play button
       this.playBtn.addEventListener('click', () => {
-        // If player has entered a name, use it
-        if (this.playerNameInput.value.trim()) {
-          this.playerName = this.playerNameInput.value.trim();
-        }
-        
         if (this.selectedMode === 'battle') {
           // In battle mode, Play acts as Ready toggle for both host and guest
           if (!this.hostId && !this.isHost) {

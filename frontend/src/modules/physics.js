@@ -1,204 +1,146 @@
 import * as THREE from 'three';
+import RAPIER from '@dimforge/rapier3d-compat';
+import { updateKart, getEngineForce, getBrakingForce, getRearFriction } from './kart.js';
 
-// Initialize physics world
-export function initPhysics(ammo) {
-  // Create physics configuration
-  const collisionConfig = new ammo.btDefaultCollisionConfiguration();
-  const dispatcher = new ammo.btCollisionDispatcher(collisionConfig);
-  const broadphase = new ammo.btDbvtBroadphase();
-  const solver = new ammo.btSequentialImpulseConstraintSolver();
-  
-  // Create physics world
-  const physicsWorld = new ammo.btDiscreteDynamicsWorld(
-    dispatcher, broadphase, solver, collisionConfig
-  );
-  
-  // Set gravity
-  physicsWorld.setGravity(new ammo.btVector3(0, -20, 0));
-  
-  // Create temporary transform for reuse
-  const tmpTrans = new ammo.btTransform();
-  
-  console.log("Physics world initialized");
-  
-  return { physicsWorld, tmpTrans };
+// Physics time step – exported so callers can reference it
+export const FIXED_PHYSICS_STEP = 1 / 60; // 60 Hz
+
+/**
+ * Initialise the Rapier physics world.
+ * Must be awaited before any other physics calls.
+ * Returns { world } — the Rapier World instance.
+ */
+export async function initPhysics() {
+  await RAPIER.init();
+
+  const world = new RAPIER.World({ x: 0.0, y: -20.0, z: 0.0 });
+  world.timestep = FIXED_PHYSICS_STEP;
+
+  console.log('✅ Rapier physics world initialised');
+  return { world };
 }
+
+/**
+ * Utility: create a static (fixed) box collider in the world.
+ * Replaces the old addRigidBody helper.
+ */
+export function addBoxCollider(
+  world, halfExtents, position, quaternion,
+  friction = 0.7, restitution = 0.2
+) {
+  const bodyDesc = RAPIER.RigidBodyDesc.fixed()
+    .setTranslation(position.x, position.y, position.z);
+  if (quaternion) {
+    bodyDesc.setRotation({ x: quaternion.x, y: quaternion.y, z: quaternion.z, w: quaternion.w });
+  }
+  const body = world.createRigidBody(bodyDesc);
+
+  const colliderDesc = RAPIER.ColliderDesc
+    .cuboid(halfExtents.x, halfExtents.y, halfExtents.z)
+    .setFriction(friction)
+    .setRestitution(restitution);
+  world.createCollider(colliderDesc, body);
+  return body;
+}
+
+// Legacy alias kept for API compatibility
+export const addRigidBody = addBoxCollider;
 
 // Update physics simulation
-export function updatePhysics(deltaTime, ammo, physicsState, carState, debugObjects, raceState) {
-  const { physicsWorld, tmpTrans } = physicsState;
-  const { 
-    carBody, vehicle, carModel, wheelMeshes, 
-    keyState, currentSteeringAngle, updateSteering
+/**
+ * Per-step physics update.
+ * Signature change: `ammo` and `{ physicsWorld, tmpTrans }` arguments removed.
+ * physicsState = { world }  (Rapier World)
+ */
+export function updatePhysics(
+  deltaTime, physicsState, carState, debugObjects, raceState, kartState = null
+) {
+  const { world } = physicsState;
+  const {
+    carBody, vehicle, carModel,
+    keyState, currentSteeringAngle, updateSteering,
   } = carState;
-  
-  if (!vehicle || !carModel) return { currentSpeed: 0 };
-  
-  // Get current velocity to determine if we're moving forward or backward
-  const velocity = carBody.getLinearVelocity();
-  
-  // Get forward direction using Three.js
+
+  if (!vehicle || !carModel) {
+    return { currentSpeed: 0, currentSteeringAngle: currentSteeringAngle ?? 0 };
+  }
+
+  // ── Read velocity from Rapier rigid body (plain {x,y,z} object) ──
+  const vel = carBody.linvel();
+  const velocityThree = new THREE.Vector3(vel.x, vel.y, vel.z);
   const carForward = new THREE.Vector3();
   carModel.getWorldDirection(carForward);
-  
-  // Convert Ammo velocity to Three.js vector
-  const velocityThree = new THREE.Vector3(
-    velocity.x(), 
-    velocity.y(), 
-    velocity.z()
-  );
-  
-  // Calculate dot product using Three.js
   const dotForward = carForward.dot(velocityThree);
-  const maxEngineForce = 1000;
-  const maxBrakingForce = 50;
-  
-  // Calculate car speed in km/h
-  const speedKPH = velocityThree.length() * 3.6;
-  
-  // Check if the race has started before allowing engine forces
-  let engineForce = 0;
-  let brakingForce = 0;
-  
-  // Only allow movement if race has started and not finished
-  if (raceState.raceStarted && !raceState.raceFinished) {
-    // Handle key inputs with proper braking logic
-    if (keyState.w) {
-      // Accelerate forward
-      engineForce = maxEngineForce;
-      brakingForce = 0;
-    } else if (keyState.s) {
-      if (dotForward > 0.1) {
-        // Moving forward - apply brakes when S is pressed
-        engineForce = 0;
-        brakingForce = maxBrakingForce;
-      } else {
-        // Stopped or moving backward - apply reverse
-        engineForce = -maxEngineForce / 2;
-        brakingForce = 0;
-      }
-    } else {
-      // No key pressed - engine off, light braking
-      engineForce = 0;
-      brakingForce = 20;
-    }
+  const speedKPH   = velocityThree.length() * 3.6;
+
+  // ── Kart state update (drift charge, boost tick) ──────────────────
+  if (kartState) updateKart(kartState, keyState, deltaTime, speedKPH);
+
+  // ── Engine & braking forces ────────────────────────────────────────
+  let engineForce, brakingForce;
+  if (kartState) {
+    engineForce  = getEngineForce(kartState, keyState, dotForward, raceState);
+    brakingForce = getBrakingForce(keyState, dotForward, raceState);
   } else {
-    // Either countdown not over or race is finished - apply brakes
-    brakingForce = maxBrakingForce;
-  }
-  
-  // Apply forces to all wheels
-  for (let i = 0; i < vehicle.getNumWheels(); i++) {
-    // Engine force to rear wheels only
-    if (i >= 2) {
-      vehicle.applyEngineForce(engineForce, i);
+    const started  = raceState.raceStarted  || raceState.battleStarted  || false;
+    const finished = raceState.raceFinished || raceState.battleFinished || false;
+    if (started && !finished) {
+      if (keyState.w)                          { engineForce = 2200; brakingForce = 0;  }
+      else if (keyState.s && dotForward > 0.1) { engineForce = 0;    brakingForce = 80; }
+      else if (keyState.s)                     { engineForce = -800; brakingForce = 0;  }
+      else                                     { engineForce = 0;    brakingForce = 22; }
+    } else {
+      engineForce = 0; brakingForce = 80;
     }
-    
-    // Braking force to all wheels for better braking
-    vehicle.setBrake(brakingForce, i);
   }
 
-  let newSteeringAngle = 0;
-  
-  // Call updateSteering to update the steering angle, passing the current speed
-  if (!raceState.raceFinished) {
-    newSteeringAngle = updateSteering(deltaTime, vehicle, keyState, currentSteeringAngle, speedKPH);
-  }
-  
-  // Clean up Ammo.js objects to prevent memory leaks
-  ammo.destroy(velocity);
-  
-  // Step physics simulation
-  physicsWorld.stepSimulation(deltaTime, 10);
-  
-  // Update debug objects if any
-  if (debugObjects && debugObjects.length > 0) {
-    updateDebugObjects(vehicle, debugObjects, tmpTrans);
-  }
-  
-  // Return both speed and the new steering angle
-  return { 
-    currentSpeed: speedKPH,
-    currentSteeringAngle: newSteeringAngle 
-  };
-}
-
-// Update debug objects
-function updateDebugObjects(vehicle, debugObjects, tmpTrans) {
-  debugObjects.forEach((obj, index) => {
-    if (obj.isWheel) {
-      const wheelIndex = obj.wheelIndex % 4;
-      vehicle.updateWheelTransform(wheelIndex, true);
-      const transform = vehicle.getWheelInfo(wheelIndex).get_m_worldTransform();
-      const pos = transform.getOrigin();
-      const quat = transform.getRotation();
-      
-      obj.mesh.position.set(pos.x(), pos.y(), pos.z());
-      obj.mesh.quaternion.set(quat.x(), quat.y(), quat.z(), quat.w());
-    } else if (obj.body) {
-      const ms = obj.body.getMotionState();
-      if (ms) {
-        ms.getWorldTransform(tmpTrans);
-        const p = tmpTrans.getOrigin();
-        const q = tmpTrans.getRotation();
-        
-        obj.mesh.position.set(p.x(), p.y(), p.z());
-        obj.mesh.quaternion.set(q.x(), q.y(), q.z(), q.w());
-      }
+  // ── Apply to Rapier vehicle controller wheels ─────────────────────
+  const numWheels = vehicle.numWheels();
+  for (let i = 0; i < numWheels; i++) {
+    if (i >= 2) { // rear wheels: engine
+      vehicle.setWheelEngineForce(i, engineForce);
+      if (kartState) vehicle.setWheelFrictionSlip(i, getRearFriction(kartState));
     }
-  });
-}
+    vehicle.setWheelBrake(i, brakingForce);
+  }
 
-// Physics time step constants
-export const FIXED_PHYSICS_STEP = 1/60; // 60Hz physics
-
-// Add a rigid body to the physics world
-export function addRigidBody(
-  ammo, physicsWorld, shape, mass, position, quaternion, 
-  friction = 0.5, restitution = 0.2
-) {
-  const transform = new ammo.btTransform();
-  transform.setIdentity();
-  
-  // Set position
-  transform.setOrigin(
-    new ammo.btVector3(position.x, position.y, position.z)
-  );
-  
-  // Set rotation
-  if (quaternion) {
-    transform.setRotation(
-      new ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w)
+  // ── Drift lateral impulse (initiates / sustains rear slide) ──────
+  if (kartState?.isDrifting && carModel) {
+    const lateralWorld = new THREE.Vector3(1, 0, 0).applyQuaternion(carModel.quaternion);
+    const pushStr = 700 * deltaTime;
+    const pos = carBody.translation();
+    carBody.applyImpulseAtPoint(
+      {
+        x: lateralWorld.x * kartState.driftDir * pushStr,
+        y: 0,
+        z: lateralWorld.z * kartState.driftDir * pushStr,
+      },
+      { x: pos.x, y: pos.y + 0.3, z: pos.z - 1.5 },
+      true
     );
   }
-  
-  const motionState = new ammo.btDefaultMotionState(transform);
-  const localInertia = new ammo.btVector3(0, 0, 0);
-  
-  // Calculate inertia for dynamic bodies
-  if (mass > 0) {
-    shape.calculateLocalInertia(mass, localInertia);
+
+  // ── Steering (wider range while drifting) ─────────────────────────
+  let newSteeringAngle = currentSteeringAngle ?? 0;
+  const gameFinished = raceState.raceFinished || raceState.battleFinished || false;
+  if (!gameFinished) {
+    newSteeringAngle = updateSteering(
+      deltaTime, vehicle, keyState, currentSteeringAngle ?? 0, speedKPH,
+      kartState?.isDrifting ?? false
+    );
   }
-  
-  // Create rigid body info
-  const rbInfo = new ammo.btRigidBodyConstructionInfo(
-    mass, motionState, shape, localInertia
-  );
-  
-  // Create rigid body
-  const body = new ammo.btRigidBody(rbInfo);
-  
-  // Set friction and restitution
-  body.setFriction(friction);
-  body.setRestitution(restitution);
-  
-  // Add to physics world
-  physicsWorld.addRigidBody(body);
-  
-  // Clean up temporary Ammo objects
-  ammo.destroy(transform);
-  ammo.destroy(localInertia);
-  ammo.destroy(rbInfo);
-  
-  return body;
+
+  // ── Step vehicle controller THEN world (order is critical) ───────
+  // Filter predicate: exclude the car's own chassis collider from wheel raycasts
+  // so the wheels detect the track surface, not the car body itself.
+  // filterFlags = 0 means no category exclusions; filterGroups = null means no
+  // interaction-group filtering.
+  const chassisCol = carState.chassisCollider;
+  const filterPredicate = chassisCol
+    ? (collider) => collider !== chassisCol
+    : undefined;
+  vehicle.updateVehicle(deltaTime, 0, null, filterPredicate);
+  world.step();
+
+  return { currentSpeed: speedKPH, currentSteeringAngle: newSteeringAngle };
 }

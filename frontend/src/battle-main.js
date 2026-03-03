@@ -6,7 +6,6 @@
 
 import * as THREE from 'three';
 import "./style.css";
-import Ammo from './lib/ammo.js';
 import { createVehicle, updateSteering, resetCarPosition, updateCarPosition } from './modules/car.js';
 import { initPhysics, updatePhysics, FIXED_PHYSICS_STEP } from './modules/physics.js';
 import { 
@@ -47,12 +46,13 @@ try {
 
 // Global variables
 let camera, scene, renderer;
-let physicsWorld, tmpTrans;
+let world; // Rapier physics World
 const clock = new THREE.Clock();
 
 // Car components
 let carBody;
 let vehicle;
+let chassisCollider;
 let wheelMeshes = [];
 let carModel;
 
@@ -101,16 +101,10 @@ async function init() {
   console.log('🏁 Initializing Battle Mode...');
 
   try {
-    // Initialize Ammo.js first
-    const ammo = await Ammo();
-    window.Ammo = ammo;
-    console.log('✅ Ammo.js loaded');
-
-    // Initialize physics
+    // Initialize physics (Rapier)
     console.log('Initializing physics world...');
-    const physicsState = initPhysics(ammo);
-    physicsWorld = physicsState.physicsWorld;
-    tmpTrans = physicsState.tmpTrans;
+    const physicsState = await initPhysics();
+    world = physicsState.world;
     console.log('✅ Physics initialized');
 
     // Create scene
@@ -163,7 +157,7 @@ async function init() {
     console.log('Creating arena...');
   // Support new lobby-driven arenaId field
   const arenaId = (gameConfig && (gameConfig.arenaId || gameConfig.battleArena)) ? (gameConfig.arenaId || gameConfig.battleArena) : 'box';
-    arenaInfo = loadArena(window.Ammo, scene, physicsWorld, arenaId);
+    arenaInfo = loadArena(scene, world, arenaId);
     window._battleArenaInfo = arenaInfo; // for debugging
     console.log('✅ Arena created', arenaInfo);
 
@@ -199,7 +193,6 @@ async function init() {
 
     // Initialize health system
     healthSystem = createHealthSystem({
-      ammo: window.Ammo,
       getCarBody: () => carBody,
       onRespawn: () => {
         // Re-apply spawn transform on respawn
@@ -272,14 +265,14 @@ async function createPlayerCar() {
 
     // Create vehicle immediately for physics; update visuals in callback when model loads
     const components = createVehicle(
-      window.Ammo,
       scene,
-      physicsWorld,
+      world,
       [],
       (loaded) => {
         // Model and wheel meshes are now available
         carBody = loaded.carBody;
         vehicle = loaded.vehicle;
+        chassisCollider = loaded.chassisCollider;
         wheelMeshes = loaded.wheelMeshes;
         carModel = loaded.carModel;
         currentSteeringAngle = loaded.currentSteeringAngle || 0;
@@ -290,6 +283,7 @@ async function createPlayerCar() {
     // Set physics references immediately
     carBody = components.carBody;
     vehicle = components.vehicle;
+    chassisCollider = components.chassisCollider;
     wheelMeshes = components.wheelMeshes;
     carModel = components.carModel; // will be null until model loads
     currentSteeringAngle = components.currentSteeringAngle || 0;
@@ -375,31 +369,18 @@ function onWindowResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-// Apply the arena spawn transform to the player's car
+// Apply the arena spawn transform to the player's car (Rapier version)
 function applySpawnTransform(resetVelocity = false) {
-  if (!window.Ammo || !carBody || !arenaInfo || !arenaInfo.spawnPoints || arenaInfo.spawnPoints.length === 0) return;
-  const Ammo = window.Ammo;
+  if (!carBody || !arenaInfo || !arenaInfo.spawnPoints || arenaInfo.spawnPoints.length === 0) return;
   const spawn = arenaInfo.spawnPoints[playerSpawnIndex % arenaInfo.spawnPoints.length];
 
-  // Optionally zero velocities
   if (resetVelocity) {
-    const zero = new Ammo.btVector3(0,0,0);
-    carBody.setLinearVelocity(zero);
-    carBody.setAngularVelocity(zero);
-    Ammo.destroy(zero);
+    carBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    carBody.setAngvel({ x: 0, y: 0, z: 0 }, true);
   }
 
-  const t = new Ammo.btTransform();
-  t.setIdentity();
-  t.setOrigin(new Ammo.btVector3(spawn.x, spawn.y, spawn.z));
-  const q = new Ammo.btQuaternion(0, 0, 0, 1);
-  t.setRotation(q);
-  carBody.setWorldTransform(t);
-  const ms = carBody.getMotionState && carBody.getMotionState();
-  if (ms) ms.setWorldTransform(t);
-
-  Ammo.destroy(t);
-  Ammo.destroy(q);
+  carBody.setTranslation({ x: spawn.x, y: spawn.y, z: spawn.z }, true);
+  carBody.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true);
 }
 
 // ----- Health & Respawn (incremental) -----
@@ -427,30 +408,17 @@ function respawnPlayer() {
     battleState.invulnerable = !!st.invulnerable;
     return;
   }
-  // Fallback simple respawn at arena center
-  const Ammo = window.Ammo;
-  if (!Ammo || !carBody) return;
+  // Fallback simple respawn (Rapier version)
+  if (!carBody) return;
 
-  const zero = new Ammo.btVector3(0,0,0);
-  carBody.setLinearVelocity(zero);
-  carBody.setAngularVelocity(zero);
-
-  const t = new Ammo.btTransform();
-  t.setIdentity();
-  t.setOrigin(new Ammo.btVector3(0, 3, 0));
-  const q = new Ammo.btQuaternion(0, 0, 0, 1);
-  t.setRotation(q);
-  carBody.setWorldTransform(t);
-  const ms = carBody.getMotionState();
-  if (ms) ms.setWorldTransform(t);
+  carBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
+  carBody.setAngvel({ x: 0, y: 0, z: 0 }, true);
+  carBody.setTranslation({ x: 0, y: 3, z: 0 }, true);
+  carBody.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true);
 
   battleState.health = battleState.maxHealth;
   battleState.invulnerable = true;
   setTimeout(() => { battleState.invulnerable = false; }, 2000);
-
-  Ammo.destroy(zero);
-  Ammo.destroy(t);
-  Ammo.destroy(q);
 }
 
 function hideLoadingScreen() {
@@ -510,7 +478,7 @@ function createCountdownOverlay() {
   el.style.display = 'flex';
   el.style.alignItems = 'center';
   el.style.justifyContent = 'center';
-  el.style.fontFamily = 'Poppins, sans-serif';
+  el.style.fontFamily = "'Inter', system-ui, sans-serif";
   el.style.fontSize = '8rem';
   el.style.fontWeight = '800';
   el.style.color = '#fff';
@@ -613,7 +581,7 @@ function animate() {
   const deltaTime = Math.min(clock.getDelta(), 0.1);
   accumulator += deltaTime;
 
-  if (physicsWorld && vehicle && carModel) {
+  if (world && vehicle && carModel) {
     // Map battle state to physics "race" state expectations
     const physicsModeState = {
       raceStarted: !!battleState.battleStarted,
@@ -626,6 +594,7 @@ function animate() {
         carBody,
         vehicle,
         carModel,
+        chassisCollider,
         wheelMeshes,
         keyState,
         currentSteeringAngle,
@@ -634,8 +603,7 @@ function animate() {
 
       const physicsResult = updatePhysics(
         FIXED_PHYSICS_STEP,
-        window.Ammo,
-        { physicsWorld, tmpTrans },
+        { world },
         carState,
         [], // no debug objects in battle mode (for now)
         physicsModeState
@@ -651,7 +619,7 @@ function animate() {
       }
 
       // Update car rendering from physics
-      updateCarPosition(window.Ammo, vehicle, carModel, wheelMeshes);
+      updateCarPosition(vehicle, carBody, carModel, wheelMeshes);
 
       accumulator -= FIXED_PHYSICS_STEP;
     }
@@ -910,7 +878,7 @@ function spawnDamageNumberAt(worldPos, amount, color = '#ff5555') {
   el.style.top = '0px';
   el.style.transform = 'translate(-50%, -50%)';
   el.style.color = color;
-  el.style.fontFamily = 'Poppins, sans-serif';
+  el.style.fontFamily = "'Inter', system-ui, sans-serif";
   el.style.fontWeight = '800';
   el.style.fontSize = '20px';
   el.style.textShadow = '0 2px 6px rgba(0,0,0,0.5)';
@@ -970,7 +938,7 @@ function createConnectionStatusBadge() {
   el.style.right = '8px';
   el.style.background = 'rgba(0,0,0,0.55)';
   el.style.color = '#fff';
-  el.style.fontFamily = 'Poppins, sans-serif';
+  el.style.fontFamily = "'Inter', system-ui, sans-serif";
   el.style.fontSize = '12px';
   el.style.padding = '6px 10px';
   el.style.borderRadius = '6px';

@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import "./style.css";
-import Ammo from './lib/ammo.js';
 import { createVehicle, updateSteering, resetCarPosition, updateCarPosition } from './modules/car.js';
 import { loadTrackModel, loadMapDecorations, checkGroundCollision } from './modules/track.js';
+import { initPostProcessing } from './modules/post-processing.js';
 import { 
   loadGates, 
   updateGateFading, 
@@ -16,6 +16,7 @@ import {
 } from './modules/multiplayer.js';
 import { initPhysics, updatePhysics, FIXED_PHYSICS_STEP } from './modules/physics.js';
 import { createMinimap, extractTrackData, updateMinimapPlayers } from './modules/minimap.js';
+import { createKartState } from './modules/kart.js';
 
 // Check for game config from lobby
 let gameConfig = null;
@@ -43,13 +44,15 @@ try {
 
 // Global variables
 let camera, scene, renderer, controls;
-let physicsWorld, tmpTrans;
+let world;          // Rapier physics World
+let postProcessing; // EffectComposer pipeline
 let debugObjects = [];
 const clock = new THREE.Clock();
 
 // Car components
 let carBody;
 let vehicle;
+let chassisCollider;
 let wheelMeshes = [];
 let carModel;
 
@@ -62,7 +65,7 @@ let upDotDelta = 0;
 
 // Control state
 const keyState = {
-  w: false, s: false, a: false, d: false
+  w: false, s: false, a: false, d: false, shift: false
 };
 
 // Camera parameters
@@ -121,6 +124,10 @@ let activeRacers = [];
 
 // Add this variable to your global variables section
 let minimapState;
+let kartState;          // kart mechanics (drift, boost)
+let driftUI;            // drift charge bar element
+let boostFlash;         // full-screen boost flash overlay
+let wasBoostingLastFrame = false;
 
 let finalLeaderboardShown = false;
 
@@ -144,7 +151,7 @@ function createRaceUI() {
   waitingForPlayersOverlay.style.color = '#fff'; 
   waitingForPlayersOverlay.style.padding = '30px 40px';
   waitingForPlayersOverlay.style.borderRadius = '10px';
-  waitingForPlayersOverlay.style.fontFamily = "'Poppins', sans-serif";
+  waitingForPlayersOverlay.style.fontFamily = "'Inter', system-ui, sans-serif";
   waitingForPlayersOverlay.style.fontSize = '24px';
   waitingForPlayersOverlay.style.textAlign = 'center';
   waitingForPlayersOverlay.style.zIndex = '1000';
@@ -169,7 +176,7 @@ function createRaceUI() {
   countdownOverlay.style.color = '#fff';
   countdownOverlay.style.padding = '40px 60px';
   countdownOverlay.style.borderRadius = '10px';
-  countdownOverlay.style.fontFamily = "'Poppins', sans-serif";
+  countdownOverlay.style.fontFamily = "'Inter', system-ui, sans-serif";
   countdownOverlay.style.fontSize = '60px';
   countdownOverlay.style.fontWeight = 'bold';
   countdownOverlay.style.textAlign = 'center';
@@ -212,7 +219,7 @@ function createRaceTimer() {
   timerContent.style.color = '#fff';
   timerContent.style.padding = '10px 20px';
   timerContent.style.borderRadius = '10px';
-  timerContent.style.fontFamily = "'Poppins', sans-serif";
+  timerContent.style.fontFamily = "'Inter', system-ui, sans-serif";
   timerContent.style.fontSize = '28px';
   timerContent.style.fontWeight = 'bold';
   timerContent.style.textAlign = 'center';
@@ -246,7 +253,7 @@ function createLeaderboard() {
   leaderboard.style.color = '#fff';
   leaderboard.style.padding = '15px';
   leaderboard.style.borderRadius = '10px';
-  leaderboard.style.fontFamily = "'Poppins', sans-serif";
+  leaderboard.style.fontFamily = "'Inter', system-ui, sans-serif";
   leaderboard.style.fontSize = '18px';
   leaderboard.style.fontWeight = 'bold';
   leaderboard.style.textAlign = 'left';
@@ -536,7 +543,7 @@ function createSpectatorUI() {
   spectatorUI.style.color = '#fff';
   spectatorUI.style.padding = '10px 20px';
   spectatorUI.style.borderRadius = '10px';
-  spectatorUI.style.fontFamily = "'Poppins', sans-serif";
+  spectatorUI.style.fontFamily = "'Inter', system-ui, sans-serif";
   spectatorUI.style.fontSize = '18px';
   spectatorUI.style.fontWeight = 'bold';
   spectatorUI.style.textAlign = 'center';
@@ -699,7 +706,7 @@ function showFinalLeaderboard() {
   finalLeaderboard.style.color = '#fff';
   finalLeaderboard.style.padding = '40px';
   finalLeaderboard.style.borderRadius = '15px';
-  finalLeaderboard.style.fontFamily = "'Poppins', sans-serif";
+  finalLeaderboard.style.fontFamily = "'Inter', system-ui, sans-serif";
   finalLeaderboard.style.fontSize = '20px';
   finalLeaderboard.style.textAlign = 'center';
   finalLeaderboard.style.zIndex = '2000';
@@ -797,7 +804,7 @@ function showFinalLeaderboard() {
   // Create home button
   const homeButton = document.createElement('button');
   homeButton.textContent = 'HOME';
-  homeButton.style.fontFamily = "'Poppins', sans-serif";
+  homeButton.style.fontFamily = "'Inter', system-ui, sans-serif";
   homeButton.style.fontWeight = '900';
   homeButton.style.fontSize = '1.1rem';
   homeButton.style.padding = '10px 30px';
@@ -910,8 +917,112 @@ function setupCartoonySkybox(scene) {
   scene.add(sky);
 }
 
+// ── Drift charge / boost HUD ──────────────────────────────────────────────
+function createDriftUI() {
+  // Bar container
+  driftUI = document.createElement('div');
+  driftUI.id = 'drift-ui';
+  driftUI.style.position = 'absolute';
+  driftUI.style.bottom = '175px';
+  driftUI.style.left = '50%';
+  driftUI.style.transform = 'translateX(-50%)';
+  driftUI.style.display = 'none';
+  driftUI.style.flexDirection = 'column';
+  driftUI.style.alignItems = 'center';
+  driftUI.style.gap = '5px';
+  driftUI.style.zIndex = '1000';
+  driftUI.style.pointerEvents = 'none';
+
+  const label = document.createElement('div');
+  label.id = 'drift-label';
+  label.style.fontFamily = "'Inter', system-ui, sans-serif";
+  label.style.fontWeight = '900';
+  label.style.fontSize = '13px';
+  label.style.letterSpacing = '3px';
+  label.style.color = '#fff';
+  label.style.textShadow = '0 0 8px rgba(255,255,255,0.8)';
+  label.innerText = 'DRIFT';
+
+  const barBg = document.createElement('div');
+  barBg.style.width = '180px';
+  barBg.style.height = '10px';
+  barBg.style.background = 'rgba(0,0,0,0.55)';
+  barBg.style.borderRadius = '5px';
+  barBg.style.overflow = 'hidden';
+  barBg.style.border = '1px solid rgba(255,255,255,0.25)';
+
+  const barFill = document.createElement('div');
+  barFill.id = 'drift-bar-fill';
+  barFill.style.width = '0%';
+  barFill.style.height = '100%';
+  barFill.style.background = '#aaaaaa';
+  barFill.style.borderRadius = '5px';
+  barFill.style.transition = 'background 0.15s';
+
+  barBg.appendChild(barFill);
+  driftUI.appendChild(label);
+  driftUI.appendChild(barBg);
+  document.body.appendChild(driftUI);
+
+  // Full-screen boost flash overlay
+  boostFlash = document.createElement('div');
+  boostFlash.id = 'boost-flash';
+  boostFlash.style.position = 'absolute';
+  boostFlash.style.inset = '0';
+  boostFlash.style.pointerEvents = 'none';
+  boostFlash.style.zIndex = '999';
+  boostFlash.style.background =
+    'radial-gradient(ellipse at center, transparent 35%, rgba(255,170,0,0.42) 100%)';
+  boostFlash.style.opacity = '0';
+  boostFlash.style.transition = 'opacity 0.08s ease-in';
+  document.body.appendChild(boostFlash);
+}
+
+function updateDriftUI() {
+  if (!driftUI || !kartState) return;
+  const barFill = document.getElementById('drift-bar-fill');
+  const label   = document.getElementById('drift-label');
+  if (!barFill || !label) return;
+
+  if (kartState.isBoosting) {
+    driftUI.style.display = 'flex';
+    label.innerText = 'BOOST!';
+    label.style.color = '#ffcc00';
+    label.style.textShadow = '0 0 12px rgba(255,200,0,0.95)';
+    const maxDur = kartState.preset.superBoostDuration;
+    const pct    = Math.max(0, (kartState.boostTimer / maxDur)) * 100;
+    barFill.style.width = `${pct}%`;
+    barFill.style.background = '#ffcc00';
+    // Flash on first frame of boost
+    if (!wasBoostingLastFrame && boostFlash) {
+      boostFlash.style.transition = 'opacity 0.08s ease-in';
+      boostFlash.style.opacity = '1';
+      setTimeout(() => {
+        if (boostFlash) {
+          boostFlash.style.transition = 'opacity 0.55s ease-out';
+          boostFlash.style.opacity = '0';
+        }
+      }, 80);
+    }
+    wasBoostingLastFrame = true;
+  } else if (kartState.isDrifting) {
+    wasBoostingLastFrame = false;
+    driftUI.style.display = 'flex';
+    label.innerText = 'DRIFT';
+    label.style.color = '#fff';
+    label.style.textShadow = '0 0 8px rgba(255,255,255,0.8)';
+    barFill.style.width = `${kartState.driftCharge}%`;
+    if (kartState.sparksLevel === 2)      barFill.style.background = '#ff8800'; // orange = super
+    else if (kartState.sparksLevel === 1) barFill.style.background = '#4dc9ff'; // blue  = mini
+    else                                  barFill.style.background = '#aaaaaa'; // grey  = building
+  } else {
+    wasBoostingLastFrame = false;
+    driftUI.style.display = 'none';
+  }
+}
+
 // Initialize everything
-function init() {
+async function init() {
   // Check and handle orientation
   handleOrientationChange();
   window.addEventListener('orientationchange', handleOrientationChange);
@@ -960,13 +1071,16 @@ function init() {
   camera.position.set(0, 10, 20);
   
   // Setup renderer
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.outputEncoding = THREE.sRGBEncoding;  // or THREE.LinearSRGBEncoding in newer Three.js
+  renderer = new THREE.WebGLRenderer({ antialias: false }); // SMAA handles AA
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   document.body.appendChild(renderer.domElement);
+
+  // Post-processing (bloom + SMAA); must come after renderer + scene + camera exist
+  postProcessing = initPostProcessing(renderer, scene, camera);
   
   // Initialize UI
   initUI();
@@ -976,82 +1090,69 @@ function init() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    if (postProcessing) postProcessing.resize(window.innerWidth, window.innerHeight);
   });
   
-  console.log("About to initialize Ammo.js");
-  // Initialize Ammo.js and setup physics
-  Ammo().then(ammo => {
-    console.log("Ammo.js initialized");
-    window.Ammo = ammo;
-    
-    document.body.removeChild(loadingEl);
-    
-    const physicsState = initPhysics(ammo);
-    physicsWorld = physicsState.physicsWorld;
-    tmpTrans = physicsState.tmpTrans;
-    
-    // Load the track as a single model
-    const mapToLoad = gameConfig?.trackId || 'map1'; // Default to map1 if no config
-    loadTrackModel(ammo, mapToLoad, scene, physicsWorld, loadingManager, (trackModel) => {
-      console.log(`Track model loaded (${mapToLoad}), extracting for minimap`);
-      // Extract track data for minimap when track is loaded
-      extractTrackData(trackModel);
-    });
-    
-    // Load map decorations
-    loadMapDecorations(mapToLoad, scene, renderer, camera, loadingManager);
-    
-    // Load gates
-    gateData = loadGates(mapToLoad, scene, loadingManager, (loadedGateData) => {
-      // Store the reference when gates are fully loaded
-      gateData = loadedGateData;
-      // Make gate data globally available for multiplayer
-      window.gateData = gateData;
-      console.log(`Gates loaded for ${mapToLoad}. Total gates: ${gateData.totalGates}`);
-    });
-    
-    console.log("About to create vehicle physics");
+  console.log('About to initialise Rapier physics');
+  // ── Physics (Rapier – replaces Ammo.js) ──────────────────────────────────
+  const physicsState = await initPhysics();
+  world = physicsState.world;
+  console.log('✅ Rapier initialised');
 
-    // First create just the physics body, don't set global variables yet
-    const carComponents = createVehicle(ammo, scene, physicsWorld, debugObjects, (loadedComponents) => {
-      
-      // Now set all the global variables
-      carBody = loadedComponents.carBody;
-      vehicle = loadedComponents.vehicle;
-      wheelMeshes = loadedComponents.wheelMeshes;
-      carModel = loadedComponents.carModel;
-      currentSteeringAngle = loadedComponents.currentSteeringAngle;
-      
-      console.log("Car model loaded and global variables set:", carModel);
-      
-      // Update car reference in multiplayer state
-      multiplayerState.carModel = carModel;
-      
-      // For single player, start the countdown immediately
-      if (!raceState.isMultiplayer) {
-        console.log("Single player mode - starting countdown");
-        setTimeout(() => startCountdown(), 500);
-      }
-      
-      // Now that the car is fully loaded, we can start the animation loop
-      animate();
-    });
-    
-    // Set physics body immediately for physics to work
-    carBody = carComponents.carBody;
-    vehicle = carComponents.vehicle;
-    
-    // Set up controls early so they work when the car loads
-    setupKeyControls();
-    
-    // Initialize peer connection for multiplayer
-    multiplayerState = initMultiplayer({
-      scene: scene,
-      camera: camera,
-      carModel: null // Will be set later when loaded
-    });
-    
-    // Animation will start in the callback when the car is fully loaded
+  document.body.removeChild(loadingEl);
+
+  // Load the track as a single model
+  const mapToLoad = gameConfig?.trackId || 'map1';
+  loadTrackModel(mapToLoad, scene, world, loadingManager, (trackModel) => {
+    console.log(`Track model loaded (${mapToLoad}), extracting for minimap`);
+    extractTrackData(trackModel);
+  });
+
+  // Load map decorations
+  loadMapDecorations(mapToLoad, scene, renderer, camera, loadingManager);
+
+  // Load gates
+  gateData = loadGates(mapToLoad, scene, loadingManager, (loadedGateData) => {
+    gateData = loadedGateData;
+    window.gateData = gateData;
+    console.log(`Gates loaded for ${mapToLoad}. Total gates: ${gateData.totalGates}`);
+  });
+
+  console.log('About to create vehicle physics');
+
+  // Create vehicle (physics body is immediate; model loads via callback)
+  const carComponents = createVehicle(scene, world, debugObjects, (loadedComponents) => {
+    carBody = loadedComponents.carBody;
+    vehicle = loadedComponents.vehicle;
+    chassisCollider = loadedComponents.chassisCollider;
+    wheelMeshes = loadedComponents.wheelMeshes;
+    carModel = loadedComponents.carModel;
+    currentSteeringAngle = loadedComponents.currentSteeringAngle;
+
+    console.log('Car model loaded and global variables set:', carModel);
+    multiplayerState.carModel = carModel;
+
+    if (!raceState.isMultiplayer) {
+      console.log('Single player mode - starting countdown');
+      setTimeout(() => startCountdown(), 500);
+    }
+
+    animate();
+  });
+
+  // Set physics body immediately so physics runs before model is ready
+  carBody = carComponents.carBody;
+  vehicle = carComponents.vehicle;
+  chassisCollider = carComponents.chassisCollider;
+
+  // Set up controls early so they work when the car loads
+  setupKeyControls();
+
+  // Initialise peer connection for multiplayer
+  multiplayerState = initMultiplayer({
+    scene: scene,
+    camera: camera,
+    carModel: null,
   });
 
   // Check if this is a multiplayer game
@@ -1060,8 +1161,12 @@ function init() {
   createRaceUI();
   createRaceTimer();
   createLeaderboard();
-  createSpectatorUI(); // Add this line
-  
+  createSpectatorUI();
+
+  // Kart mechanics state + drift/boost HUD
+  kartState = createKartState('medium');
+  createDriftUI();
+
   // Create minimap
   const mapToLoad = gameConfig?.trackId || 'map1'; 
   minimapState = createMinimap(mapToLoad);
@@ -1097,17 +1202,17 @@ function setupKeyControls() {
     if (event.key.toLowerCase() === 's') keyState.s = true;
     if (event.key.toLowerCase() === 'a') keyState.a = true;
     if (event.key.toLowerCase() === 'd') keyState.d = true;
+    if (event.key === 'Shift') keyState.shift = true;
 
     // Replace the keydown R handler with this improved version:
     if (event.key.toLowerCase() === 'r') {
-      if (window.Ammo && carBody && gateData) {
+      if (carBody && gateData) {
         // Use the gateData values instead of the global variables
         currentSteeringAngle = resetCarPosition(
-          window.Ammo, 
-          carBody, 
-          vehicle, 
-          currentSteeringAngle, 
-          gateData.currentGatePosition, 
+          carBody,
+          vehicle,
+          currentSteeringAngle,
+          gateData.currentGatePosition,
           gateData.currentGateQuaternion
         );
       }
@@ -1128,6 +1233,7 @@ function setupKeyControls() {
     if (event.key.toLowerCase() === 's') keyState.s = false;
     if (event.key.toLowerCase() === 'a') keyState.a = false;
     if (event.key.toLowerCase() === 'd') keyState.d = false;
+    if (event.key === 'Shift') keyState.shift = false;
   });
 }
 
@@ -1166,13 +1272,14 @@ function animate() {
   const deltaTime = Math.min(clock.getDelta(), 0.1);
   accumulator += deltaTime;
   
-  if (physicsWorld) {
+  if (world) {
     // Run physics at fixed intervals
     while (accumulator >= FIXED_PHYSICS_STEP) {
       const carState = {
         carBody, 
         vehicle, 
         carModel, 
+        chassisCollider,
         wheelMeshes,
         keyState,
         currentSteeringAngle,
@@ -1180,12 +1287,12 @@ function animate() {
       };
 
       const physicsResult = updatePhysics(
-        FIXED_PHYSICS_STEP, 
-        window.Ammo, 
-        { physicsWorld, tmpTrans }, 
-        carState, 
+        FIXED_PHYSICS_STEP,
+        { world },
+        carState,
         debugObjects,
-        raceState // Pass the race state
+        raceState,
+        kartState
       );
 
       // Update speed
@@ -1193,17 +1300,16 @@ function animate() {
       updateSpeedometer(speedKPH);
       currentSteeringAngle = physicsResult.currentSteeringAngle;
       // Update car position
-      updateCarPosition(window.Ammo, vehicle, carModel, wheelMeshes);
+      updateCarPosition(vehicle, carBody, carModel, wheelMeshes);
 
       // Add this line to check if car has fallen off the track
-      checkGroundCollision(window.Ammo, carBody, () => {
+      checkGroundCollision(carBody, () => {
         // This will reset the car to the last gate position when it falls off
         currentSteeringAngle = resetCarPosition(
-          window.Ammo, 
-          carBody, 
-          vehicle, 
-          currentSteeringAngle, 
-          gateData.currentGatePosition, 
+          carBody,
+          vehicle,
+          currentSteeringAngle,
+          gateData.currentGatePosition,
           gateData.currentGateQuaternion
         );
       });
@@ -1306,7 +1412,11 @@ function animate() {
     }
   }
   
-  renderer.render(scene, camera);
+  // Update drift/boost HUD (per render frame, not per physics step)
+  updateDriftUI();
+
+  // Render through post-processing pipeline
+  postProcessing.composer.render();
 }
 
 // Add this new function to check if the car is flipped and auto-reset if needed
@@ -1350,13 +1460,12 @@ function checkCarFlipped(deltaTime) {
         carFlippedTime = 0;
         
         // Reset car to last checkpoint
-        if (window.Ammo && carBody && gateData) {
+        if (carBody && gateData) {
           currentSteeringAngle = resetCarPosition(
-            window.Ammo, 
-            carBody, 
-            vehicle, 
-            currentSteeringAngle, 
-            gateData.currentGatePosition, 
+            carBody,
+            vehicle,
+            currentSteeringAngle,
+            gateData.currentGatePosition,
             gateData.currentGateQuaternion
           );
         }
@@ -1496,6 +1605,7 @@ function handleOrientationChange() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    if (postProcessing) postProcessing.resize(window.innerWidth, window.innerHeight);
   }
 }
 

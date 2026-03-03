@@ -1,134 +1,104 @@
 import * as THREE from 'three';
+import RAPIER from '@dimforge/rapier3d-compat';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-// Vehicle parameters
-const VEHICLE_WIDTH = 2.0;
-const VEHICLE_HEIGHT = 0.6;
-const VEHICLE_LENGTH = 4.0;
-const WHEEL_RADIUS = 0.4;
-const WHEEL_WIDTH = 0.25;
-const SUSPENSION_REST_LENGTH = 0.3;
-const WHEEL_X_OFFSET = 0.8;
-const WHEEL_Z_OFFSET = 1.5;
+// Vehicle parameters – kart proportions
+const VEHICLE_WIDTH = 1.8;
+const VEHICLE_HEIGHT = 0.5;
+const VEHICLE_LENGTH = 3.2;
+const WHEEL_RADIUS = 0.35;
+const WHEEL_WIDTH = 0.22;
+const SUSPENSION_REST_LENGTH = 0.25;
+const WHEEL_X_OFFSET = 0.75;
+const WHEEL_Z_OFFSET = 1.3;
 
-// Physics tuning parameters
-const SUSPENSION_STIFFNESS = 50;
-const SUSPENSION_DAMPING = 10;
-const SUSPENSION_COMPRESSION = 4.0;
-const ROLL_INFLUENCE = 0.1;
-const WHEEL_FRICTION = 10;
+// Physics tuning – arcade kart feel
+const SUSPENSION_STIFFNESS = 28;
+const SUSPENSION_DAMPING = 4;
+const SUSPENSION_COMPRESSION = 2.0;
+const WHEEL_FRICTION = 8;           // base; overridden dynamically during drift
+const CHASSIS_MASS = 120;           // medium weight class
 
 // Steering parameters
-const MAX_STEERING_ANGLE = 0.15;
-const STEERING_SPEED = 1.5;
-const STEERING_RETURN_SPEED = 2; 
+const MAX_STEERING_ANGLE = 0.55;    // used as ceiling in calculateMaxSteeringAngle
+const STEERING_SPEED = 3.5;         // how fast the wheel turns
+const STEERING_RETURN_SPEED = 5.0;  // how fast it centres
 
-// Modify createVehicle to accept a callback for when the car is fully loaded
-export function createVehicle(ammo, scene, physicsWorld, debugObjects, onCarLoaded) {
-  console.log("Starting vehicle creation");
-  
-  // Use the global loadingManager
-  const loader = new GLTFLoader(window.loadingManager);
-  
-  // Car components that will be returned immediately for physics setup
-  const carComponents = {
-    carBody: null,
-    vehicle: null,
-    wheelMeshes: [],
-    carModel: null,
-    currentSteeringAngle: 0
-  };
-  
-  // Create chassis physics body with modified dimensions
-  const chassisShape = new ammo.btBoxShape(
-    new ammo.btVector3(VEHICLE_WIDTH/2, VEHICLE_HEIGHT/2 * 0.8, VEHICLE_LENGTH/2 * 0.9)
+// ─────────────────────────────────────────────────────────────────────────────
+// createVehicle – builds Rapier chassis + vehicle controller, then loads model
+// Signature change: removed `ammo` and `physicsWorld` params, replaced with `world`
+// ─────────────────────────────────────────────────────────────────────────────
+export function createVehicle(scene, world, debugObjects, onCarLoaded) {
+  console.log('Starting vehicle creation (Rapier)');
+
+  // ── Chassis rigid body ────────────────────────────────────────────
+  const chassisDesc = RAPIER.RigidBodyDesc.dynamic()
+    .setTranslation(0, 5.2, 0)
+    .setLinearDamping(0.05)
+    .setAngularDamping(0.3);
+  const carBody = world.createRigidBody(chassisDesc);
+
+  const chassisCollider = world.createCollider(
+    RAPIER.ColliderDesc
+      .cuboid(VEHICLE_WIDTH / 2, VEHICLE_HEIGHT / 2 * 0.8, VEHICLE_LENGTH / 2 * 0.9)
+      .setFriction(0.1)
+      .setMass(CHASSIS_MASS),
+    carBody
   );
-  
-  const chassisTransform = new ammo.btTransform();
-  chassisTransform.setIdentity();
-  // Move the chassis origin up slightly to prevent underbody scraping
-  chassisTransform.setOrigin(new ammo.btVector3(0, 5.2, 0));
-  
-  const chassisMotionState = new ammo.btDefaultMotionState(chassisTransform);
-  const chassisMass = 200;
-  const localInertia = new ammo.btVector3(0, 0, 0);
-  chassisShape.calculateLocalInertia(chassisMass, localInertia);
-  
-  const chassisRbInfo = new ammo.btRigidBodyConstructionInfo(
-    chassisMass, chassisMotionState, chassisShape, localInertia
-  );
-  
-  carComponents.carBody = new ammo.btRigidBody(chassisRbInfo);
-  carComponents.carBody.setActivationState(4); 
-  carComponents.carBody.setFriction(0.1);
-  physicsWorld.addRigidBody(carComponents.carBody);
-  
-  // Create vehicle raycaster
-  const tuning = new ammo.btVehicleTuning();
-  const vehicleRaycaster = new ammo.btDefaultVehicleRaycaster(physicsWorld);
-  carComponents.vehicle = new ammo.btRaycastVehicle(tuning, carComponents.carBody, vehicleRaycaster);
-  
-  // Configure vehicle
-  carComponents.vehicle.setCoordinateSystem(0, 1, 2); 
-  physicsWorld.addAction(carComponents.vehicle);
-  
-  // Wheel directions and axles
-  const wheelDirCS = new ammo.btVector3(0, -1, 0);
-  const wheelAxleCS = new ammo.btVector3(-1, 0, 0);
-  
-  // Add all four wheels
+
+  // ── Rapier vehicle controller ─────────────────────────────────────
+  const vehicle = world.createVehicleController(carBody);
+
+  // Wheel connection points in chassis local space
   const wheelPositions = [
-    { x: -WHEEL_X_OFFSET, y: 0, z: WHEEL_Z_OFFSET, name: 'wheel-fl' }, 
-    { x: WHEEL_X_OFFSET, y: 0, z: WHEEL_Z_OFFSET, name: 'wheel-fr' },  
-    { x: -WHEEL_X_OFFSET, y: 0, z: -WHEEL_Z_OFFSET, name: 'wheel-bl' }, 
-    { x: WHEEL_X_OFFSET, y: 0, z: -WHEEL_Z_OFFSET, name: 'wheel-br' }  
+    { name: 'wheel-fl', x: -WHEEL_X_OFFSET, y: 0, z:  WHEEL_Z_OFFSET },
+    { name: 'wheel-fr', x:  WHEEL_X_OFFSET, y: 0, z:  WHEEL_Z_OFFSET },
+    { name: 'wheel-bl', x: -WHEEL_X_OFFSET, y: 0, z: -WHEEL_Z_OFFSET },
+    { name: 'wheel-br', x:  WHEEL_X_OFFSET, y: 0, z: -WHEEL_Z_OFFSET },
   ];
-  
-  // Create wheels with physics (but without visuals yet)
-  for (let i = 0; i < wheelPositions.length; i++) {
-    const pos = wheelPositions[i];
-    const isFront = i < 2; 
-    
-    // Connect wheel to vehicle
-    const connectionPoint = new ammo.btVector3(pos.x, pos.y, pos.z);
-    carComponents.vehicle.addWheel(
-      connectionPoint,
-      wheelDirCS,
-      wheelAxleCS,
+
+  for (const wp of wheelPositions) {
+    vehicle.addWheel(
+      { x: wp.x, y: wp.y, z: wp.z },  // chassis connection (local)
+      { x: 0, y: -1, z: 0 },           // suspension direction (down, local)
+      { x: -1, y: 0, z: 0 },           // axle direction (local)
       SUSPENSION_REST_LENGTH,
-      WHEEL_RADIUS,
-      tuning,
-      isFront
+      WHEEL_RADIUS
     );
-    
-    // Configure wheel
-    const wheelInfo = carComponents.vehicle.getWheelInfo(i);
-    wheelInfo.set_m_suspensionStiffness(SUSPENSION_STIFFNESS);
-    wheelInfo.set_m_wheelsDampingRelaxation(SUSPENSION_DAMPING);
-    wheelInfo.set_m_wheelsDampingCompression(SUSPENSION_COMPRESSION);
-    wheelInfo.set_m_frictionSlip(WHEEL_FRICTION);
-    wheelInfo.set_m_rollInfluence(ROLL_INFLUENCE);
-    wheelInfo.set_m_maxSuspensionTravelCm(SUSPENSION_REST_LENGTH * 150); 
-    
-    // Add a placeholder for the wheel mesh
-    carComponents.wheelMeshes.push(null);
   }
-  
-  // Now load the car model with a callback
-  loadCarModel(ammo, scene, carComponents, wheelPositions, (updatedComponents) => {
-    console.log("Car model fully loaded, calling onCarLoaded callback");
-    // When the car model is fully loaded, call the callback with the updated components
-    if (onCarLoaded) onCarLoaded(updatedComponents);
+
+  for (let i = 0; i < 4; i++) {
+    vehicle.setWheelSuspensionStiffness(i, SUSPENSION_STIFFNESS);
+    vehicle.setWheelMaxSuspensionForce(i, 6000);
+    vehicle.setWheelSuspensionCompression(i, SUSPENSION_COMPRESSION);
+    vehicle.setWheelSuspensionRelaxation(i, SUSPENSION_DAMPING);
+    vehicle.setWheelFrictionSlip(i, WHEEL_FRICTION);
+    vehicle.setWheelSideFrictionStiffness(i, 1.0);
+    vehicle.setWheelMaxSuspensionTravel(i, 0.5);
+  }
+
+  const carComponents = {
+    carBody,
+    vehicle,
+    chassisCollider,
+    wheelMeshes: [null, null, null, null],
+    carModel: null,
+    currentSteeringAngle: 0,
+  };
+
+  // Load visual model asynchronously; physics is already live
+  loadCarModel(scene, carComponents, wheelPositions, (updated) => {
+    if (onCarLoaded) onCarLoaded(updated);
   });
-  
-  // Return physics body immediately for setting up physics
+
   return carComponents;
 }
 
-// Modify loadCarModel to accept and use a callback
-function loadCarModel(ammo, scene, carComponents, wheelPositions, onModelLoaded) {
+// Internal: load the GLTF car model and wire up wheel meshes
+function loadCarModel(scene, carComponents, wheelPositions, onModelLoaded) {
   const loader = new GLTFLoader();
-  
+
+
   // Get the player ID
   const myPlayerId = localStorage.getItem('myPlayerId');
   
@@ -244,14 +214,14 @@ function loadCarModel(ammo, scene, carComponents, wheelPositions, onModelLoaded)
       console.error(`Error loading ${carColor} car model:`, error);
       // Handle fallback with callback
       if (carColor !== 'red') {
-        loadFallbackCarModel(ammo, scene, carComponents, wheelPositions, onModelLoaded);
+        loadFallbackCarModel(scene, carComponents, wheelPositions, onModelLoaded);
       }
     }
   );
 }
 
-// Update fallback model function to also use callback
-function loadFallbackCarModel(ammo, scene, carComponents, wheelPositions, onModelLoaded) {
+// Fallback model loader (no ammo param needed)
+function loadFallbackCarModel(scene, carComponents, wheelPositions, onModelLoaded) {
   console.log('Falling back to red car model');
   const loader = new GLTFLoader();
   
@@ -320,9 +290,9 @@ function loadFallbackCarModel(ammo, scene, carComponents, wheelPositions, onMode
 }
 
 // Update steering based on key state
-export function updateSteering(deltaTime, vehicle, keyState, currentSteeringAngle, currentSpeed = 0) {
-  // Calculate dynamic maximum steering angle based on speed
-  const maxSteeringAngle = calculateMaxSteeringAngle(currentSpeed);
+export function updateSteering(deltaTime, vehicle, keyState, currentSteeringAngle, currentSpeed = 0, isDrifting = false) {
+  // Calculate dynamic maximum steering angle based on speed (wider during drift)
+  const maxSteeringAngle = calculateMaxSteeringAngle(currentSpeed, isDrifting);
   
   // Calculate target steering angle based on key state
   let targetSteeringAngle = 0;
@@ -353,105 +323,110 @@ export function updateSteering(deltaTime, vehicle, keyState, currentSteeringAngl
     newSteeringAngle = targetSteeringAngle;
   }
   
-  // Apply steering to front wheels
+  // Apply steering to front wheels (Rapier API)
   for (let i = 0; i < 2; i++) {
-    vehicle.setSteeringValue(newSteeringAngle, i);
+    vehicle.setWheelSteering(i, newSteeringAngle);
   }
   
   return newSteeringAngle;
 }
 
-// Add a new function to calculate max steering angle based on speed
-function calculateMaxSteeringAngle(speedKPH) {
-  // Constants for steering behavior
-  const MIN_SPEED = 0;   
-  const MAX_SPEED = 150; 
-  const MIN_ANGLE = 0.15;
-  const MAX_ANGLE = 0.4; 
-  
-  // Clamp the speed to avoid extreme values
-  const clampedSpeed = Math.max(MIN_SPEED, Math.min(MAX_SPEED, speedKPH));
-  
-  const speedFactor = (clampedSpeed - MIN_SPEED) / (MAX_SPEED - MIN_SPEED);
-  const steeringAngle = MAX_ANGLE - speedFactor * (MAX_ANGLE - MIN_ANGLE);
-  
-  return steeringAngle;
+// Calculate max steering angle – wide at low speed, tighter at top speed
+function calculateMaxSteeringAngle(speedKPH, isDrifting = false) {
+  const MIN_ANGLE = 0.28;  // tight at top speed
+  const MAX_ANGLE = 0.55;  // wide at low speed
+  const MAX_SPEED = 180;
+
+  const t = Math.max(0, Math.min(1, speedKPH / MAX_SPEED));
+  const angle = MAX_ANGLE - t * (MAX_ANGLE - MIN_ANGLE);
+
+  // Allow slightly more rotation into the drift
+  return isDrifting ? Math.min(angle * 1.12, MAX_ANGLE * 1.1) : angle;
 }
 
-// Reset car position 
-export function resetCarPosition(ammo, carBody, vehicle, currentSteeringAngle, currentGatePosition, currentGateQuaternion) {
-  // Cancel all movement
-  const zero = new ammo.btVector3(0, 0, 0);
-  carBody.setLinearVelocity(zero);
-  carBody.setAngularVelocity(zero);
-  
-  // Reset position transform
-  const resetTransform = new ammo.btTransform();
-  resetTransform.setIdentity();
-  resetTransform.setOrigin(new ammo.btVector3(
-    currentGatePosition.x, 
-    currentGatePosition.y + 2, 
-    currentGatePosition.z
-  )); 
-  
-  const rotQuat = new ammo.btQuaternion(
-    currentGateQuaternion.x,
-    currentGateQuaternion.y,
-    currentGateQuaternion.z,
-    currentGateQuaternion.w
-  );
-  resetTransform.setRotation(rotQuat);
-  
-  // Apply transform
-  carBody.setWorldTransform(resetTransform);
-  carBody.getMotionState().setWorldTransform(resetTransform);
-  
-  // Reset steering
-  let newSteeringAngle = 0;
-  for (let i = 0; i < vehicle.getNumWheels(); i++) {
-    if (i < 2) { // Front wheels only
-      vehicle.setSteeringValue(0, i);
+// Reset car position – Rapier version (no ammo param)
+export function resetCarPosition(carBody, vehicle, currentSteeringAngle, currentGatePosition, currentGateQuaternion) {
+  // Zero all movement
+  carBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
+  carBody.setAngvel({ x: 0, y: 0, z: 0 }, true);
+
+  // Teleport to last gate position (+ 2 m up)
+  carBody.setTranslation({
+    x: currentGatePosition.x,
+    y: currentGatePosition.y + 2,
+    z: currentGatePosition.z,
+  }, true);
+
+  carBody.setRotation({
+    x: currentGateQuaternion.x,
+    y: currentGateQuaternion.y,
+    z: currentGateQuaternion.z,
+    w: currentGateQuaternion.w,
+  }, true);
+
+  // Reset steering on front wheels
+  for (let i = 0; i < 2; i++) {
+    vehicle.setWheelSteering(i, 0);
+  }
+
+  return 0; // new steering angle
+}
+
+// Update car and wheel positions from physics – Rapier version
+// Signature change: `ammo` removed, `carBody` added as 2nd param
+export function updateCarPosition(vehicle, carBody, carModel, wheelMeshes) {
+  if (!vehicle || !carModel || !carBody) return;
+
+  // Chassis transform comes directly from the Rapier rigid body
+  const pos = carBody.translation(); // {x, y, z}
+  const rot = carBody.rotation();    // {x, y, z, w}
+  carModel.position.set(pos.x, pos.y, pos.z);
+  carModel.quaternion.set(rot.x, rot.y, rot.z, rot.w);
+
+  // Wheel transforms from vehicle controller
+  // Rapier's DynamicRayCastVehicleController provides:
+  //   wheelChassisConnectionPointCs(i) – local connection point
+  //   wheelSuspensionLength(i)         – current compression
+  //   wheelRotation(i)                 – spin angle on axle
+  //   wheelIsInContact(i)              – ground contact flag
+  const numWheels = vehicle.numWheels();
+  const chassisQuat = new THREE.Quaternion(rot.x, rot.y, rot.z, rot.w);
+  const chassisPos  = new THREE.Vector3(pos.x, pos.y, pos.z);
+
+  for (let i = 0; i < numWheels; i++) {
+    if (!wheelMeshes[i]) continue;
+
+    // Get the local connection point on the chassis
+    const connCs = vehicle.wheelChassisConnectionPointCs(i);
+    if (!connCs) continue;
+
+    // Direction is down in local space {0, -1, 0}
+    const suspLen = vehicle.wheelSuspensionLength(i) ?? SUSPENSION_REST_LENGTH;
+    const spinAngle = vehicle.wheelRotation(i) ?? 0;
+
+    // Compute wheel centre in local space: connection point + suspension direction * length
+    const localWheelPos = new THREE.Vector3(connCs.x, connCs.y - suspLen, connCs.z);
+
+    // Transform to world space
+    const worldWheelPos = localWheelPos.applyQuaternion(chassisQuat).add(chassisPos);
+    wheelMeshes[i].position.copy(worldWheelPos);
+
+    // Wheel orientation: chassis rotation * spin rotation around the axle (X axis)
+    const steerAngle = vehicle.wheelSteering(i) ?? 0;
+    const wheelQuat = chassisQuat.clone();
+
+    // Apply steering (Y-axis rotation) for front wheels (index 0, 1)
+    if (i < 2) {
+      wheelQuat.multiply(new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(0, 1, 0), steerAngle
+      ));
     }
-    
-    // Reset wheel rotation and position
-    vehicle.updateWheelTransform(i, true);
-  }
-  
-  // Clean up
-  ammo.destroy(zero);
-  ammo.destroy(rotQuat);
-  ammo.destroy(resetTransform);
-  
-  return newSteeringAngle;
-}
 
-// Update car and wheel positions from physics
-export function updateCarPosition(ammo, vehicle, carModel, wheelMeshes) {
-  if (!vehicle || !carModel) return;
-  
-  // Update chassis transform
-  const chassisWorldTrans = vehicle.getChassisWorldTransform();
-  const position = chassisWorldTrans.getOrigin();
-  const quaternion = chassisWorldTrans.getRotation();
+    // Apply spin rotation around the axle
+    wheelQuat.multiply(new THREE.Quaternion().setFromAxisAngle(
+      new THREE.Vector3(-1, 0, 0), spinAngle
+    ));
 
-  // Update car model position
-  carModel.position.set(position.x(), position.y(), position.z());
-  carModel.quaternion.set(quaternion.x(), quaternion.y(), quaternion.z(), quaternion.w());
-  
-  // Update wheel transforms
-  for (let i = 0; i < vehicle.getNumWheels(); i++) {
-    // Sync wheels with physics
-    vehicle.updateWheelTransform(i, true);
-    const transform = vehicle.getWheelInfo(i).get_m_worldTransform();
-    const wheelPosition = transform.getOrigin();
-    const wheelQuaternion = transform.getRotation();
-    
-    wheelMeshes[i].position.set(wheelPosition.x(), wheelPosition.y(), wheelPosition.z());
-    wheelMeshes[i].quaternion.set(
-      wheelQuaternion.x(), 
-      wheelQuaternion.y(), 
-      wheelQuaternion.z(), 
-      wheelQuaternion.w()
-    );
+    wheelMeshes[i].quaternion.copy(wheelQuat);
   }
 }

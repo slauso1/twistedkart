@@ -1,8 +1,10 @@
 import * as THREE from 'three';
+import RAPIER from '@dimforge/rapier3d-compat';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 // Function to load the track model and add to scene
-export function loadTrackModel(ammo, mapId = "map1", scene, physicsWorld, loadingManager, callback) {
+// Signature change: `ammo` removed, `physicsWorld` replaced with `world`
+export function loadTrackModel(mapId = 'map1', scene, world, loadingManager, callback) {
   // Use the loading manager with your loader
   const loader = new GLTFLoader(loadingManager);
   
@@ -37,7 +39,7 @@ export function loadTrackModel(ammo, mapId = "map1", scene, physicsWorld, loadin
       console.log(`Map ${mapId} track loaded successfully`);
       
       // Add physics collider for the track
-      addTrackCollider(track, ammo, physicsWorld);
+      addTrackCollider(track, world);
       
       // Call the callback with the track model if provided
       if (callback && typeof callback === 'function') {
@@ -53,98 +55,54 @@ export function loadTrackModel(ammo, mapId = "map1", scene, physicsWorld, loadin
   );
 }
 
-// Function to create a physics collider for the entire track
-function addTrackCollider(trackModel, ammo, physicsWorld) {
-  // Extract all mesh geometries from the track
-  let vertices = [];
-  let indices = [];
-  let indexOffset = 0;
-  
-  // Update world matrix to apply all transformations
+// Build a Rapier trimesh collider from every mesh in the loaded track model
+function addTrackCollider(trackModel, world) {
   trackModel.updateMatrixWorld(true);
-  
-  // Traverse all meshes in the track model
-  trackModel.traverse(child => {
-    if (child.isMesh && child.geometry) {
-      // Get vertices
-      const positionAttr = child.geometry.getAttribute('position');
-      const vertexCount = positionAttr.count;
-      
-      // Apply mesh's transform to vertices
-      const worldMatrix = child.matrixWorld;
-      
-      // Extract vertices with transformation
-      for (let i = 0; i < vertexCount; i++) {
-        const vertex = new THREE.Vector3().fromBufferAttribute(positionAttr, i);
-        vertex.applyMatrix4(worldMatrix);
-        
-        vertices.push(vertex.x, vertex.y, vertex.z);
-      }
-      
-      // Get indices - if they exist
-      if (child.geometry.index) {
-        const indices32 = child.geometry.index.array;
-        for (let i = 0; i < indices32.length; i++) {
-          indices.push(indices32[i] + indexOffset);
-        }
-      } else {
-        // No indices - assume vertices are already arranged as triangles
-        for (let i = 0; i < vertexCount; i++) {
-          indices.push(i + indexOffset);
-        }
-      }
-      
-      indexOffset += vertexCount;
-    }
-  });
-  
-  // Create Ammo triangle mesh
-  const triangleMesh = new ammo.btTriangleMesh();
-  
-  // Add all triangles to the mesh
-  for (let i = 0; i < indices.length; i += 3) {
-    const i1 = indices[i] * 3;
-    const i2 = indices[i+1] * 3;
-    const i3 = indices[i+2] * 3;
-    
-    const v1 = new ammo.btVector3(vertices[i1], vertices[i1+1], vertices[i1+2]);
-    const v2 = new ammo.btVector3(vertices[i2], vertices[i2+1], vertices[i2+2]);
-    const v3 = new ammo.btVector3(vertices[i3], vertices[i3+1], vertices[i3+2]);
-    
-    triangleMesh.addTriangle(v1, v2, v3, false);
-    
-    // Clean up Ammo vectors
-    ammo.destroy(v1);
-    ammo.destroy(v2);
-    ammo.destroy(v3);
-  }
-  
-  // Create track collision shape using triangle mesh
-  const trackShape = new ammo.btBvhTriangleMeshShape(triangleMesh, true, true);
 
-  // The rigid body uses identity transform since all transformations are in the vertices
-  const trackTransform = new ammo.btTransform();
-  trackTransform.setIdentity();
-  
-  // Create motion state
-  const motionState = new ammo.btDefaultMotionState(trackTransform);
-  
-  // Set up track rigid body (static - mass = 0)
-  const mass = 0;
-  const localInertia = new ammo.btVector3(0, 0, 0);
-  
-  // Create rigid body
-  const rbInfo = new ammo.btRigidBodyConstructionInfo(
-    mass, motionState, trackShape, localInertia
-  );
-  
-  const trackBody = new ammo.btRigidBody(rbInfo);
-  trackBody.setFriction(1.0); // Increase from 0.8 for better grip on ramps
-  
-  // Add to physics world
-  physicsWorld.addRigidBody(trackBody);
-  
-  console.log("Track physics collider created successfully");
+  const tempVert = new THREE.Vector3();
+  let totalTriangles = 0;
+
+  trackModel.traverse((child) => {
+    if (!child.isMesh || !child.geometry) return;
+
+    child.updateMatrixWorld(true);
+    const geo = child.geometry;
+    const posAttr = geo.attributes.position;
+    if (!posAttr) return;
+
+    const vertexCount = posAttr.count;
+
+    // Build world-space vertex array
+    const positions = new Float32Array(vertexCount * 3);
+    for (let i = 0; i < vertexCount; i++) {
+      tempVert.fromBufferAttribute(posAttr, i).applyMatrix4(child.matrixWorld);
+      positions[i * 3]     = tempVert.x;
+      positions[i * 3 + 1] = tempVert.y;
+      positions[i * 3 + 2] = tempVert.z;
+    }
+
+    // Build index array (Rapier requires Uint32Array)
+    let indices;
+    if (geo.index) {
+      const src = geo.index.array;
+      indices = src instanceof Uint32Array ? src : new Uint32Array(src);
+    } else {
+      indices = new Uint32Array(vertexCount);
+      for (let i = 0; i < vertexCount; i++) indices[i] = i;
+    }
+
+    if (positions.length === 0 || indices.length < 3) return;
+
+    // Attach a static trimesh collider (no rigid body = fixed)
+    const desc = RAPIER.ColliderDesc.trimesh(positions, indices)
+      .setFriction(1.0)
+      .setRestitution(0.1);
+    world.createCollider(desc);
+
+    totalTriangles += indices.length / 3;
+  });
+
+  console.log(`Track physics collider created: ${Math.round(totalTriangles)} triangles`);
 }
 
 // Function to load map decorations
@@ -206,22 +164,12 @@ export function loadMapDecorations(mapId = "map1", scene, renderer, camera, load
   );
 }
 
-// Export checkGroundCollision to be used from main.js
-export function checkGroundCollision(ammo, carBody, resetFunction) {
-  // Get the car's position
+// Export checkGroundCollision – Rapier version (no ammo param)
+export function checkGroundCollision(carBody, resetFunction) {
   if (!carBody) return;
-  
-  const transform = new ammo.btTransform();
-  const motionState = carBody.getMotionState();
-  motionState.getWorldTransform(transform);
-  const position = transform.getOrigin();
-  
-  // If car is below certain height, reset it
-  if (position.y() < 0) {
-    console.log("Car fell off track - resetting position");
-    if (resetFunction) resetFunction(ammo);
+  const pos = carBody.translation(); // plain {x, y, z}
+  if (pos.y < 0) {
+    console.log('Car fell off track – resetting');
+    if (resetFunction) resetFunction();
   }
-  
-  // Clean up
-  ammo.destroy(transform);
 }

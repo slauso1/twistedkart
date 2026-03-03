@@ -3,19 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Twisted Kart</title>
+  <title>SuperTuxKart Web</title>
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="stylesheet" href="src/lobby-style.css">
   <script type="module" src="/src/lobby-car.js"></script>
   <script type="module" src="/src/lobby.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Exo+2:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.min.js"></script>
   <script src="https://kit.fontawesome.com/1ab8f48e0a.js" crossorigin="anonymous"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Funnel+Sans:ital,wght@0,300..800;1,300..800&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Lilita+One&display=swap" rel="stylesheet">
   <script type="module">
     import LobbyBackground from '/src/lobby-background.js';
     
@@ -48,8 +47,10 @@
 
   <!-- Loading Screen -->
   <div id="loading-screen">
-  <h1 class="loading-title">Twisted Kart</h1>
-  <p class="loading-subtitle">GLO EDITION</p>
+    <h1 class="loading-title">
+      <span class="tk-r">S</span><span class="tk-o">U</span><span class="tk-y">P</span><span class="tk-g">E</span><span class="tk-b">R</span><span class="tk-p">T</span><span class="tk-r">U</span><span class="tk-o">X</span><span class="tk-y">K</span><span class="tk-g">A</span><span class="tk-b">R</span><span class="tk-p">T</span>
+    </h1>
+    <p class="loading-subtitle">WEB EDITION</p>
     <div class="loader-container">
       <div class="loader">
         <div class="bar"></div>
@@ -65,8 +66,10 @@
   <div class="game-container">
     <!-- Title Area -->
     <header class="game-header">
-  <h1 class="game-title">Twisted Kart</h1>
-  <p class="game-subtitle">GLO EDITION</p>
+      <h1 class="game-title">
+        <span class="tk-r">S</span><span class="tk-o">U</span><span class="tk-y">P</span><span class="tk-g">E</span><span class="tk-b">R</span><span class="tk-p">T</span><span class="tk-r">U</span><span class="tk-o">X</span><span class="tk-y">K</span><span class="tk-g">A</span><span class="tk-b">R</span><span class="tk-p">T</span>
+      </h1>
+      <p class="game-subtitle">WEB EDITION</p>
     </header>
     
     <!-- Main Content Area -->
@@ -109,6 +112,7 @@
           </div>
           
           <div class="map-selector-container">
+            <h3 class="section-label">TRACK</h3>
             <div class="map-dropdown">
               <button class="dropdown-button">
                 <span class="dropdown-arrow">▼</span>
@@ -236,6 +240,7 @@
           <li><strong>A</strong> - Steer Left</li>
           <li><strong>D</strong> - Steer Right</li>
           <li><strong>R</strong> - Reset Car (if stuck)</li>
+          <li><strong>Shift</strong> - Drift (hold while turning at speed)</li>
         </ul>
       </div>
       
@@ -245,15 +250,15 @@
 
   <!-- Inline style additions for battle lobby UI (can be moved to CSS later) -->
   <style>
-    .battle-settings { margin-top: 16px; padding: 12px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; }
+    .battle-settings { margin-top:14px; padding:14px; background:rgba(15, 10, 25, 0.4); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border:1px solid rgba(176, 38, 255, 0.3); border-radius:12px; box-shadow: 0 0 15px rgba(176, 38, 255, 0.15), inset 0 0 10px rgba(176, 38, 255, 0.1); }
     .battle-settings.hidden { display:none; }
-    .battle-settings-title { margin:0 0 8px; font-size:14px; letter-spacing:1px; color:#fff; }
+    .battle-settings-title { margin:0 0 10px; font-family:'Inter',system-ui,sans-serif; font-size:0.72rem; font-weight:700; letter-spacing:0.10em; text-transform:uppercase; color:var(--neon-magenta); text-shadow: 0 0 5px var(--neon-magenta); }
     .battle-setting-group { display:flex; flex-direction:column; margin-bottom:10px; gap:4px; }
-    .battle-setting-group label { font-size:12px; font-weight:600; color:#fff; }
-    .toggle-label { display:flex; align-items:center; gap:8px; font-size:12px; color:#fff; }
+    .battle-setting-group label { font-family:'Inter',system-ui,sans-serif; font-size:0.78rem; font-weight:600; color:var(--text-hi); }
+    .toggle-label { display:flex; align-items:center; gap:8px; font-family:'Inter',system-ui,sans-serif; font-size:0.78rem; color:var(--text-hi); }
     #battle-start-btn.hidden { display:none; }
-    #ready-states { margin-top:8px; font-size:12px; line-height:1.4; color:#fff; text-align:left; }
-    .battle-hint { font-size:11px; color:#ddd; margin:4px 0 0; }
+    #ready-states { margin-top:8px; font-family:'Inter',system-ui,sans-serif; font-size:0.78rem; line-height:1.5; color:var(--neon-cyan); text-shadow: 0 0 5px var(--neon-cyan); text-align:left; }
+    .battle-hint { font-size:0.70rem; color:var(--text-mid); margin:4px 0 0; }
   </style>
 
   <!-- Conditional Vercel analytics to prevent local 404 errors -->

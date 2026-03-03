@@ -1,101 +1,172 @@
+/* =========================================================
+   TWISTED KART — Neon Synth Glass UI
+   Design System: Dark Glass + True Neon Glow (No Pastels/Primaries)
+   Font: Inter (SF Pro equivalent) + Lilita One (title brand)
+   ========================================================= */
+
+:root {
+  /* ── Background ─────────────────────────────────────── */
+  --bg-core:        #050508;
+
+  /* ── Glass material ─────────────────────────────────── */
+  --glass-fill:     rgba(15, 10, 25, 0.4);
+  --glass-fill-md:  rgba(15, 10, 25, 0.6);
+  --glass-fill-hi:  rgba(15, 10, 25, 0.8);
+  --glass-edge:     rgba(176, 38, 255, 0.3);
+  --glass-edge-hi:  rgba(0, 243, 255, 0.5);
+  --glass-blur:     24px;
+  --glass-shadow:   0 8px 32px rgba(0, 0, 0, 0.8);
+  --glass-spec:     inset 0 1px 0 rgba(255, 255, 255, 0.1);
+
+  /* ── Neon Accents (No Primaries/Pastels) ────────────── */
+  --neon-cyan:      #00f3ff;
+  --neon-magenta:   #ff00ff;
+  --neon-purple:    #b026ff;
+  --neon-orange:    #ff5e00; /* For ready/warning states */
+  --neon-pink:      #ff007f;
+
+  /* ── Legacy Accent Mapping (Mapped to Neon) ─────────── */
+  --accent:         var(--neon-cyan);
+  --accent-hi:      #e6ffff;
+  --accent-lo:      rgba(0, 243, 255, 0.25);
+  --accent-glow:    rgba(0, 243, 255, 0.50);
+  --accent-border:  rgba(0, 243, 255, 0.55);
+
+  /* ── Semantic colors ─────────────────────────────────── */
+  --red:            var(--neon-pink);      /* danger / battle */
+  --red-lo:         rgba(255, 0, 127, 0.22);
+  --red-border:     rgba(255, 0, 127, 0.50);
+  --gold:           var(--neon-orange);      /* ready / positive */
+  --gold-lo:        rgba(255, 94, 0, 0.20);
+  --gold-border:    rgba(255, 94, 0, 0.45);
+
+  /* ── Typography ─────────────────────────────────────── */
+  --font-ui:        'Inter', system-ui, -apple-system, sans-serif;
+  --font-brand:     'Lilita One', sans-serif;
+  --text-hi:        #ffffff;
+  --text-mid:       rgba(255, 255, 255, 0.7);
+  --text-lo:        rgba(255, 255, 255, 0.4);
+  --text-label:     rgba(0, 243, 255, 0.7);  /* Neon cyan label */
+
+  /* ── Border radius ───────────────────────────────────── */
+  --r-panel:        16px;
+  --r-btn:          8px;
+  --r-sm:           6px;
+  --r-pill:         99px;
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-/* Update body with diagonal stripes that scroll right */
 body {
-  font-family: 'Poppins', sans-serif;
-  color: black;
+  font-family: var(--font-ui);
+  background: var(--bg-core);
   height: 100vh;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
+
+/* ── Ambient glow layer — Neon Synth palette ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 15% 50%, rgba(176, 38, 255, 0.15), transparent 50%),
+    radial-gradient(circle at 85% 30%, rgba(0, 243, 255, 0.15), transparent 50%),
+    radial-gradient(circle at 50% 80%, rgba(255, 0, 255, 0.1), transparent 50%);
+}
+
+/* ── 3D background canvas ───────────────────────────────── */
 #background-canvas {
-  filter: brightness(0.5);
+  filter: brightness(0.32) saturate(0.75);
 }
-/* Game Container */
+/* ─── Layout ─────────────────────────────────────────────── */
 .game-container {
   width: 95%;
   height: 95vh;
   display: flex;
   flex-direction: column;
   position: relative;
+  z-index: 1;
 }
 
-/* Header */
+/* ─── Header / Title ──────────────────────────────────────── */
 .game-header {
   text-align: center;
-  padding: 20px 0;
+  padding: 16px 0 6px;
   z-index: 10;
 }
 
-/* Game title updates */
 .game-title {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 900;
-  font-size: 4rem;
-  text-transform: uppercase;
+  font-family: var(--font-brand);
+  font-size: clamp(3rem, 6vw, 5.5rem);
+  letter-spacing: 5px;
+  line-height: 1;
+  /* True Neon Sign Effect */
   color: #ffffff;
-  -webkit-text-stroke: 3px #000;
-  letter-spacing: 4px;
-  margin: 0;
-  text-shadow: 0px 5px 0px rgb(0, 0, 0);
+  text-shadow:
+    0 0 5px #fff,
+    0 0 10px #fff,
+    0 0 20px var(--neon-purple),
+    0 0 40px var(--neon-purple),
+    0 0 80px var(--neon-purple),
+    0 0 120px var(--neon-purple);
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  -webkit-text-fill-color: unset;
+  filter: none;
 }
+
+/* Suppress individual letter colours — gradient handles it */
+.tk-r, .tk-o, .tk-y, .tk-g, .tk-b, .tk-p { color: inherit; }
 
 .game-subtitle {
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-ui);
+  font-size: 0.70rem;
   font-weight: 700;
-  font-size: 1.5rem;
+  letter-spacing: 0.30em;
   text-transform: uppercase;
-  letter-spacing: 6px;
-  color: #ffdae6;
-  margin-top: 8px;
-  margin-bottom: 0;
-  text-shadow: 0px 3px 0px rgba(0, 0, 0, 0.7);
+  color: var(--text-lo);
+  margin-top: 6px;
 }
 
-/* Main Content Area - Make it position relative to contain absolute children */
+/* ─── Content area & panels ─────────────────────────────────── */
 .game-content {
-  display: block; /* Changed from flex */
+  display: block;
   flex: 1;
   position: relative;
-  background: transparent;
   height: 100%;
 }
 
-/* Left Panel (Host Race) absolute positioning */
-.left-panel {
-  position: fixed;
-  text-align: left;
-  top: 20px;
-  left: 20px;
-  width: 22%;
-  height: auto;
-  max-height: 450px; /* Slightly reduced height */
-  border-radius: 10px;
-  z-index: 10;
-  overflow:visible;
-}
-
-/* Right Panel (Racers) absolute positioning */
+/* ── Glass panel mixin (applied to left / right) ── */
+.left-panel,
 .right-panel {
   position: fixed;
-  top: 20px;
-  right: 20px;
+  top: 130px;
   width: 22%;
-  height: auto;
-  max-height: 450px; /* Slightly reduced height */
-  border-radius: 10px;
-  overflow: hidden;
+  border-radius: var(--r-panel);
   z-index: 10;
-  text-align: center;
+  background: var(--glass-fill);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-shadow), var(--glass-spec);
+  overflow: visible;
 }
 
-/* Center Panel stays centered but fixed size instead of flex */
+.left-panel  { left:  20px; }
+.right-panel { right: 20px; text-align: center; overflow: hidden; }
+
 .center-panel {
   position: relative;
   width: 40%;
@@ -105,128 +176,141 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   overflow: hidden;
-  border-radius: 10px;
+  border-radius: var(--r-panel);
 }
+
 .panel-content {
-  padding: 25px;
-  height: auto;
+  padding: 18px 20px;
   display: flex;
   flex-direction: column;
-  overflow-y: visible; /* Allow scrolling if content overflows */
-  
-}
-/* Panel title updates to match game title */
-.panel-title {
-  font-family:'Poppins', sans-serif;
-  font-weight: 900;
-  margin-bottom: 20px;
-  color: #ffffff;
-  text-align: center;
-  font-size: 2rem;
 }
 
-/* Slightly smaller text for side panels */
+/* ── Panel title (Racers heading) ── */
+.panel-title {
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-label);
+  text-align: center;
+  margin-bottom: 12px;
+}
+
 .left-panel .panel-title,
 .right-panel .panel-title {
-  font-size: 1.8rem;
-  margin-bottom: 5px;
+  margin-bottom: 8px;
 }
 
-/* Car model container takes up less space */
+/* ─── Car preview ─────────────────────────────────────────── */
 #car-model-container {
   width: 100%;
-  height: 150px; /* Adjust height to fit within the new container */
+  height: 155px;
   position: relative;
-  margin-bottom: 0; /* Removed margin since we're using gap */
+  background: var(--glass-fill);
+  backdrop-filter: blur(8px) saturate(160%);
+  -webkit-backdrop-filter: blur(8px) saturate(160%);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--glass-edge);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 4px 20px rgba(0,0,0,0.45);
+  overflow: hidden;
+  margin-bottom: 2px;
 }
 
-/* Player name input styling */
+/* No ground strip — dark glass look */
+#car-model-container::after { display: none; }
+
+/* ─── Player name ─────────────────────────────────────────── */
 .player-name-container {
   width: 100%;
-  max-width: 400px;
+  max-width: 380px;
   text-align: center;
 }
 
 .player-name-container h3 {
-  font-family:'Poppins', sans-serif;
-  font-weight: 900;
-  margin-bottom: 15px;
-  font-size: 2rem;
-  color: #ffffff;
-  text-align: center;
-}
-
-/* Play button in center panel */
-.center-panel .play-btn {
-  margin-top: 15px;
-  margin-bottom: 15px;
-}
-
-/* Game Buttons - Base styles for all buttons */
-.play-btn, game-btn, #host-start-btn {
-  font-family:'Poppins', sans-serif;
-  font-weight: 800;
-  font-size: 1.2rem; /* Larger text size */
-  width: 100%; /* Full width for all buttons */
-  max-width: 250px; /* Maximum width */
-  height: 60px;
-  border: 3px solid #b30059; /* Darker outline */
-  background-color: #ff0080; /* Solid pink background */
-  border-radius: 5px;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
   text-transform: uppercase;
-  position: relative;
-  color: #ffffff; /* White text */
-  text-align: center;
-  margin-bottom: 15px;
-  box-shadow: 0 6px 0 #b30059;
+  color: var(--text-label);
+  margin-bottom: 8px;
 }
 
-.stop-btn {
-  margin-top: 20px;
+/* ─── Play button ─────────────────────────────────────────── */
+.center-panel .play-btn {
+  margin-top: 10px;
+  margin-bottom: 10px;
 }
 
-/* Button hover effect */
-.game-btn:hover, .create-btn:hover, .join-btn:hover, 
+.play-btn, .game-btn, #host-start-btn {
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  width: 100%;
+  max-width: 260px;
+  height: 52px;
+  background: rgba(0, 243, 255, 0.05);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--neon-cyan);
+  border-radius: var(--r-btn);
+  color: var(--neon-cyan);
+  box-shadow: 0 0 10px rgba(0, 243, 255, 0.2), inset 0 0 10px rgba(0, 243, 255, 0.1);
+  text-shadow: 0 0 8px rgba(0, 243, 255, 0.6);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-bottom: 12px;
+}
+
+.stop-btn { margin-top: 16px; }
+
+/* Button hover / active */
+.game-btn:hover, .create-btn:hover, .join-btn:hover,
 #host-start-btn:hover, #play-btn:hover, .stop-btn:hover {
-  background-color: #f5007c;
-  transform: translateY(2px);
-  box-shadow: 0 4px 0 #b30059;
+  background: rgba(0, 243, 255, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 0 20px rgba(0, 243, 255, 0.4), inset 0 0 15px rgba(0, 243, 255, 0.2);
+  color: #fff;
+  text-shadow: 0 0 10px #fff, 0 0 20px var(--neon-cyan);
 }
 
-
-/* Button active effect */
 .game-btn:active, .create-btn:active, .join-btn:active,
 #host-start-btn:active, #play-btn:active, .stop-btn:active {
-  transform: translateY(6px);
-  box-shadow: 0 0 0 #b30059;
+  transform: translateY(1px);
+  background: rgba(0, 243, 255, 0.1);
+  box-shadow: 0 0 10px rgba(0, 243, 255, 0.3), inset 0 0 5px rgba(0, 243, 255, 0.1);
 }
 
 .icon-btn {
-  background-color: #ff0080;
-  border: 2px solid #b30059;
-  color: white;
-  border-radius: 3px;
-  padding: 8px 12px;
+  background: var(--glass-fill-md);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-edge);
+  color: var(--neon-cyan);
+  border-radius: var(--r-sm);
+  padding: 7px 12px;
   cursor: pointer;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 700;
-  font-size: 1rem;
-  box-shadow: 0 3px 0 #b30059;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 0.85rem;
+  box-shadow: 0 0 8px rgba(176, 38, 255, 0.2);
+  transition: all 0.15s ease;
 }
 
 .icon-btn:hover {
-  background-color: #f5007c;
-  transform: translateY(1px);
-  box-shadow: 0 2px 0 #b30059;
+  background: rgba(176, 38, 255, 0.2);
+  border-color: var(--neon-purple);
+  color: #fff;
+  box-shadow: 0 0 15px rgba(176, 38, 255, 0.4);
+  transform: translateY(-1px);
 }
 
 .icon-btn:active {
-  transform: translateY(3px);
-  box-shadow: 0 0 0 #b30059;
+  transform: translateY(1px);
+  background: rgba(176, 38, 255, 0.1);
 }
 
 /* Party Code Section */
@@ -237,22 +321,24 @@ body {
 
 .code-display {
   background: transparent;
-  border-radius: 10px;
+  border-radius: var(--r-sm);
   text-align: center;
 }
 
-/* Other heading updates to match game title */
-.code-display h3, 
+/* Section headings inside panels — iOS-style muted label */
+.code-display h3,
 .code-input h3,
 .join-section h3,
 .game-info h3,
 .player-name-container h3,
 .color-carousel h3 {
-  font-family:'Poppins', sans-serif;
-  font-weight: 900;
-  margin-bottom: 15px;
-  font-size: 28px;
-  color: #ffffff;
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-label);
+  margin-bottom: 10px;
   text-align: center;
 }
 
@@ -267,30 +353,26 @@ body {
 }
 
 .code-box {
-  border-radius: 5px;
-  padding: 10px;
+  border-radius: var(--r-sm);
+  padding: 8px 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   margin-bottom: 10px;
-}
-
-.code {
-  font-family: 'Poppins', sans-serif;
-  font-size: 2rem;
-  font-weight: 900;
-  letter-spacing: 5px;
-  color: #ff0080;
-  flex: 1;
-  -webkit-text-stroke: 2px #b30059;
-}
-
-/* Long Peer ID overflow handling */
-.code-box {
   position: relative;
   max-width: 100%;
   overflow: hidden;
+}
+
+.code {
+  font-family: var(--font-ui);
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: #fff;
+  flex: 1;
+  text-shadow: 0 0 5px #fff, 0 0 15px var(--neon-magenta);
 }
 
 #party-code {
@@ -298,104 +380,100 @@ body {
   white-space: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
-  max-width: 260px; /* Constrain visual width */
+  max-width: 260px;
   padding-bottom: 4px;
   scrollbar-width: thin;
 }
 
-/* Webkit scrollbar styling for smoother horizontal scroll */
-#party-code::-webkit-scrollbar {
-  height: 6px;
-}
-#party-code::-webkit-scrollbar-track {
-  background: rgba(0,0,0,0.2);
-  border-radius: 4px;
-}
-#party-code::-webkit-scrollbar-thumb {
-  background: #ff0080;
-  border-radius: 4px;
-}
+#party-code::-webkit-scrollbar { height: 4px; }
+#party-code::-webkit-scrollbar-track { background: rgba(255,255,255,0.06); border-radius: 4px; }
+#party-code::-webkit-scrollbar-thumb { background: var(--neon-magenta); border-radius: 4px; }
 
-/* Subtle gradient mask to hint scrollability */
 .code-box:after {
   content: '';
   position: absolute;
   right: 0; top: 0; bottom: 0;
-  width: 38px;
+  width: 32px;
   pointer-events: none;
-  background: linear-gradient(to right, rgba(255,0,128,0), rgba(255,0,128,0.35));
+  background: linear-gradient(to right, transparent, rgba(5,5,8,0.80));
 }
 
-#join-code-input {
-  margin-top: 10px;
-}
+#join-code-input { margin-top: 10px; }
 
 .code-instructions {
-  color: white;
-  font-size: 0.9rem;
-  opacity: 0.8;
-  margin-top: 10px;
+  color: var(--text-mid);
+  font-size: 0.82rem;
+  margin-top: 8px;
 }
 
 /* Input Fields */
 input {
   width: 100%;
   max-width: 250px;
-  padding: 12px;
-  border-radius: 5px;
-  background-color: white;
-  border: 2px solid #000000;
-  color: #000000;
-  font-family: 'Poppins', sans-serif;
-  font-weight: bold;
-  font-size: 1.2rem;
+  padding: 11px 14px;
+  border-radius: var(--r-sm);
+  background: var(--glass-fill-md);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-edge);
+  color: var(--text-hi);
+  font-family: var(--font-ui);
+  font-weight: 500;
+  font-size: 1rem;
   text-align: center;
   margin-bottom: 10px;
-  box-shadow: 0px 5px 0px rgba(0, 0, 0, 1);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 2px 8px rgba(0,0,0,0.30);
+  transition: all 0.15s ease;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.3), inset 0 0 5px rgba(0, 243, 255, 0.1);
 }
 
 input::placeholder {
-  color: rgb(125, 125, 125);
-  font-size: 0.9rem;
+  color: var(--text-lo);
+  font-size: 0.88rem;
 }
 
 /* Game Info Section */
-.game-info {
-  margin-bottom: 20px;
-}
+.game-info { margin-bottom: 20px; }
 
 .game-info h3 {
-  font-family:'Poppins', sans-serif;
-  font-weight: 900;
-  margin-bottom: 15px;
-  color: #ffffff;
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-label);
+  margin-bottom: 10px;
   text-align: center;
 }
 
 .info-container {
-  background: transparent;
-  border-radius: 10px;
-  padding: 20px;
-  border: 1px solid rgba(77, 201, 255, 0.3);
+  background: var(--glass-fill);
+  backdrop-filter: blur(12px);
+  border-radius: var(--r-sm);
+  padding: 16px;
+  border: 1px solid var(--glass-edge);
   text-align: center;
-  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10);
 }
 
-/* Map Info */
 .map-info {
-  font-family:'Poppins', sans-serif;
-  font-weight: bold;
-  color: #fff;
-  margin-bottom: 15px;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--text-mid);
+  margin-bottom: 12px;
 }
 
-/* Ready Text - just updating to be consistent */
 .ready-text {
-  color: #ff0080;
-  font-weight: bold;
-  font-size: 1rem;
+  color: var(--gold);
+  font-weight: 700;
+  font-size: 0.92rem;
   margin-top: 10px;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 0 12px var(--gold-border);
 }
 
 /* Player List */
@@ -403,9 +481,11 @@ input::placeholder {
   flex: 1;
   overflow-y: auto;
   background: transparent;
-  border-radius: 10px;
+  border-radius: var(--r-sm);
   margin-bottom: 20px;
-  max-height: 200px; /* Make the player list smaller in height */
+  max-height: 200px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--neon-cyan) transparent;
 }
 
 .player-list {
@@ -414,78 +494,96 @@ input::placeholder {
 }
 
 .player-list li {
-  padding: 15px;
-  margin-bottom: 10px;
-  border-radius: 8px;
-  color: white;
+  padding: 12px 14px;
+  margin-bottom: 6px;
+  border-radius: var(--r-sm);
+  color: var(--text-hi);
+  background: var(--glass-fill);
+  border: 1px solid var(--glass-edge);
   display: flex;
   align-items: center;
   transition: all 0.2s ease;
-  font-family:'Poppins', sans-serif;
-  font-weight: bold;
+  font-family: var(--font-ui);
+  font-weight: 500;
+  font-size: 0.92rem;
+}
+
+.player-list li:hover {
+  background: var(--glass-fill-md);
+  border-color: var(--neon-purple);
+  box-shadow: 0 0 10px rgba(176, 38, 255, 0.2);
 }
 
 /* Host Badge */
 .host-badge {
-  background-color: #ff0080;
-  color: white;
-  font-family: 'Poppins', sans-serif;
-  font-weight: bold;
-  font-size: 0.8rem;
-  padding: 5px 10px;
-  border-radius: 5px;
+  background: rgba(0, 243, 255, 0.1);
+  color: var(--neon-cyan);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--neon-cyan);
+  box-shadow: 0 0 8px rgba(0, 243, 255, 0.3);
   margin-left: auto;
 }
 
 /* Exit Button */
 .exit-button {
-  background-color: #ff0080;
-  color: white;
-  font-family: 'Poppins', sans-serif;
-  font-weight: bold;
-  font-size: 0.8rem;
-  padding: 5px 10px;
-  border: none;
-  border-radius: 5px;
+  background: rgba(255, 0, 127, 0.1);
+  color: var(--neon-pink);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border: 1px solid var(--neon-pink);
+  border-radius: var(--r-pill);
   margin-left: auto;
   cursor: pointer;
-  box-shadow: 0 3px 0 #b30059;
-  transition: all 0.2s ease;
+  box-shadow: 0 0 8px rgba(255, 0, 127, 0.3);
+  transition: all 0.15s ease;
 }
 
 .exit-button:hover {
-  background-color: #f5007c;
-  transform: translateY(1px);
-  box-shadow: 0 2px 0 #b30059;
+  background: rgba(255, 0, 127, 0.2);
+  box-shadow: 0 0 15px rgba(255, 0, 127, 0.5);
+  color: #fff;
 }
 
 .exit-button:active {
-  transform: translateY(3px);
-  box-shadow: 0 0 0 #b30059;
+  background: rgba(255, 0, 127, 0.1);
+  box-shadow: 0 0 5px rgba(255, 0, 127, 0.3);
 }
 
 .no-players {
   text-align: center;
+  color: var(--text-lo);
+  font-size: 0.85rem;
 }
 
 /* Join Section */
-.join-section {
-  margin-top: 20px;
-}
+.join-section { margin-top: 20px; }
 
 .status-message {
-  color: #ff0080;
-  font-size: 0.9rem;
+  color: var(--accent-hi);
+  font-size: 0.82rem;
+  font-family: var(--font-ui);
+  font-weight: 500;
   position: fixed;
   top: 30px;
   right: 20px;
-  left: calc(100vw - 480px)
+  left: calc(100vw - 480px);
+  text-shadow: 0 0 12px var(--accent-glow);
 }
 
 /* Car Color Carousel */
 .color-carousel {
   text-align: center;
-  margin: 00px 0;
+  margin: 0;
   width: 100%;
   max-width: 400px;
 }
@@ -498,27 +596,26 @@ input::placeholder {
 }
 
 .color-option {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.18s, box-shadow 0.18s;
   border: 2px solid transparent;
 }
 
 .color-option:hover {
-  transform: scale(1.1);
+  transform: scale(1.15);
+  box-shadow: 0 0 10px rgba(255,255,255,0.30);
 }
 
 .color-option.active {
-  border: 2px solid white;
-  outline: 2px solid black;
+  border: 2px solid rgba(255,255,255,0.90);
+  box-shadow: 0 0 12px rgba(255,255,255,0.45);
 }
 
 /* Utilities */
-.hidden {
-  display: none !important;
-}
+.hidden { display: none !important; }
 
 /* Personal website link button */
 .website-link-btn {
@@ -528,66 +625,66 @@ input::placeholder {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background-color: #ff0080;
-  border: 2px solid #b30059;
-  box-shadow: 0 3px 0 #b30059;
-  color: white;
+  background: var(--glass-fill-md);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-edge-hi);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 3px 14px rgba(0,0,0,0.40);
+  color: var(--text-hi);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   z-index: 1000;
-  transition: all 0.2s ease;
+  transition: filter 0.15s, transform 0.15s;
 }
 
 .website-link-btn:hover {
-  transform: translateY(2px);
-  box-shadow: 0 1px 0 #b30059;
+  filter: brightness(1.2);
+  transform: translateY(-1px);
 }
 
 .website-link-btn:active {
-  transform: translateY(3px);
-  box-shadow: 0 0 0 #b30059;
+  transform: translateY(1px);
+  filter: brightness(0.9);
 }
 
-/* Info button styling (similar to website link button) */
+/* Info button */
 .info-btn {
   position: fixed;
   bottom: 20px;
-  left: 70px; /* Position next to website link button */
+  left: 70px;
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  font-size: 16px; 
-  background-color: #ff0080;
-  border: 2px solid #b30059;
-  box-shadow: 0 3px 0 #b30059;
-  color: white;
+  font-size: 15px;
+  background: var(--glass-fill-md);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-edge-hi);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 3px 14px rgba(0,0,0,0.40);
+  color: var(--text-hi);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   z-index: 1000;
-  transition: all 0.2s ease;
+  transition: filter 0.15s, transform 0.15s;
 }
 
 .info-btn:hover {
-  transform: translateY(2px);
-  box-shadow: 0 1px 0 #b30059;
+  filter: brightness(1.2);
+  transform: translateY(-1px);
 }
 
 .info-btn:active {
-  transform: translateY(3px);
-  box-shadow: 0 0 0 #b30059;
+  transform: translateY(1px);
+  filter: brightness(0.9);
 }
 
-/* Info popup styling */
+/* Info popup */
 .info-popup {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
   z-index: 2000;
   display: flex;
   align-items: center;
@@ -596,11 +693,10 @@ input::placeholder {
 
 .info-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.8);
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.72);
+  backdrop-filter: blur(6px);
 }
 
 .info-content {
@@ -609,47 +705,48 @@ input::placeholder {
   max-width: 600px;
   max-height: 80vh;
   overflow-y: auto;
-  background-color: #121212;
-  border: 3px solid #ff0080;
-  border-radius: 10px;
+  background: rgba(10,14,28,0.92);
+  backdrop-filter: blur(32px) saturate(180%);
+  border: 1px solid var(--glass-edge-hi);
+  border-radius: var(--r-panel);
   padding: 30px;
-  color: white;
+  color: var(--text-hi);
   z-index: 2001;
+  box-shadow: var(--glass-spec), 0 24px 60px rgba(0,0,0,0.70);
 }
 
 .info-content h2 {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 900;
-  font-size: 2.2rem;
-  color: #ffffff;
+  font-family: var(--font-brand);
+  font-size: 2rem;
+  color: var(--text-hi);
   text-align: center;
   margin-bottom: 20px;
-  -webkit-text-stroke: 1px #000;
-  text-shadow: 0px 3px 0px rgb(0, 0, 0);
+  letter-spacing: 0.04em;
 }
 
-.info-section {
-  margin-bottom: 25px;
-}
+.info-section { margin-bottom: 24px; }
 
 .info-section h3 {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 800;
-  font-size: 1.5rem;
-  color: #ff0080;
-  margin-bottom: 10px;
-}
-
-.info-section p, .info-section li {
-  font-family: 'Poppins', sans-serif;
-  font-size: 1rem;
-  line-height: 1.5;
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--accent-hi);
   margin-bottom: 8px;
 }
 
+.info-section p, .info-section li {
+  font-family: var(--font-ui);
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--text-mid);
+  margin-bottom: 6px;
+}
+
 .info-section ul {
-  padding-left: 20px;
-  margin-bottom: 10px;
+  padding-left: 18px;
+  margin-bottom: 8px;
 }
 
 #close-info-btn {
@@ -657,26 +754,53 @@ input::placeholder {
   margin: 20px auto 0;
 }
 
-/* Game Mode Selector Styles */
+/* ─── Section label (iOS-style muted uppercase) ────────────── */
+/* Applies to TRACK, GAME MODE, YOUR NAME, SELECT CAR COLOR */
+.section-label,
+.color-carousel h3,
+.player-name-container h3 {
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-label);
+  margin-bottom: 8px;
+  /* NO gradient, NO glow — iOS clarity */
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  -webkit-text-fill-color: unset;
+  filter: none;
+  text-shadow: none;
+}
+
+/* Game Mode Selector */
 .mode-selector-container {
   margin-top: 15px;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
   text-align: center;
 }
 
 .mode-selector-title {
-  color: #ffffff;
-  font-family: 'Poppins', sans-serif;
-  font-size: 1rem;
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
   font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-label);
   margin-bottom: 10px;
-  letter-spacing: 2px;
-  text-shadow: 0px 2px 0px rgba(0, 0, 0, 0.7);
+  /* NO gradient, pure label */
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  -webkit-text-fill-color: unset;
+  filter: none;
 }
 
 .mode-buttons {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
 }
 
@@ -687,152 +811,138 @@ input::placeholder {
   align-items: center;
   justify-content: center;
   gap: 5px;
-  padding: 12px 8px;
-  background-color: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 8px;
+  padding: 11px 8px;
+  background: var(--glass-fill);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--r-sm);
   cursor: pointer;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 700;
-  font-size: 0.9rem;
-  color: #ffffff;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  color: var(--text-mid);
+  transition: background 0.18s, border-color 0.18s, box-shadow 0.18s, transform 0.12s;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
 }
 
 .mode-btn i {
-  font-size: 1.8rem;
-  transition: transform 0.3s ease;
+  font-size: 1.6rem;
+  transition: transform 0.2s ease;
 }
 
 .mode-btn:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.5);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3);
+  background: var(--glass-fill-md);
+  border-color: var(--glass-edge-hi);
+  color: var(--text-hi);
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 4px 16px rgba(0,0,0,0.25);
 }
 
-.mode-btn:hover i {
-  transform: scale(1.1);
-}
+.mode-btn:hover i { transform: scale(1.1); }
 
 .mode-btn.active {
-  background-color: #ff0080;
-  border-color: #b30059;
-  box-shadow: 0 3px 0 #b30059;
+  background: linear-gradient(135deg, rgba(59,142,255,0.75), rgba(30,80,210,0.80));
+  border-color: var(--accent-border);
+  color: var(--text-hi);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 0 20px var(--accent-glow), 0 4px 12px rgba(0,0,0,0.30);
 }
 
-.mode-btn.active:hover {
-  background-color: #f5007c;
-  transform: translateY(0);
-}
+.mode-btn.active:hover { filter: brightness(1.08); transform: translateY(0); }
 
-.mode-btn span {
-  display: block;
-  letter-spacing: 1px;
-}
+.mode-btn span { display: block; letter-spacing: 0.05em; }
 
-/* Map Dropdown Styles */
+/* Map Dropdown */
 .map-selector-container {
   margin-top: 20px;
-  margin-bottom: 20px;
-}
-
-.map-selector-container{
+  margin-bottom: 18px;
   text-align: center;
-  margin-bottom: 15px;
-  color: #ffffff;
-  font-family: 'Poppins', sans-serif;
-  font-size: 1rem;
+  color: var(--text-label);
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
   font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
 }
 
-.map-dropdown {
-  position: relative;
-  width: 100%;
-}
+.map-dropdown { position: relative; width: 100%; }
 
 .dropdown-button {
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 8px 12px;
-  background-color: #ff0080;
-  border: 2px solid #b30059;
-  border-radius: 3px;
+  padding: 10px 14px;
+  background: var(--glass-fill-md);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--r-btn);
   cursor: pointer;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 700;
-  font-size: 1rem;
-  color: #ffffff;
-  -webkit-text-stroke: none;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--text-hi);
   text-align: left;
-  transition: all 0.2s ease; 
-  box-shadow: 0 3px 0 #b30059;
+  transition: background 0.15s, border-color 0.15s;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10);
 }
 
 .dropdown-button:hover {
-  background-color: #f5007c;
+  background: var(--glass-fill-hi);
+  border-color: var(--glass-edge-hi);
 }
 
 .dropdown-arrow {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   margin-right: 10px;
-  color: #ffffff;
+  color: var(--text-mid);
 }
 
 .dropdown-content {
   display: none;
   position: absolute;
-  top: 100%;
+  top: calc(100% + 4px);
   left: 0;
   width: 100%;
-  background-color: #ff0080;
-  border: 3px solid #b30059;
-  border-top: none;
-  border-radius: 0 0 5px 5px;
+  background: rgba(10,14,30,0.94);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--glass-edge-hi);
+  border-radius: var(--r-sm);
   z-index: 100;
   overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.55);
 }
 
-.map-dropdown.open .dropdown-content {
-  display: block;
-}
+.map-dropdown.open .dropdown-content { display: block; }
 
 .dropdown-option {
-  padding: 8px 12px;
+  padding: 10px 14px;
   text-align: left;
   cursor: pointer;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 700;
-  font-size: 1rem;
-  color: #ffffff;
-  -webkit-text-stroke: none;
-  transition: background-color 0.2s ease;
+  font-family: var(--font-ui);
+  font-weight: 500;
+  font-size: 0.92rem;
+  color: var(--text-mid);
+  transition: background 0.15s, color 0.15s;
 }
 
 .dropdown-option:hover {
-  background-color: #f5007c;
+  background: var(--accent-lo);
+  color: var(--text-hi);
 }
 
 .dropdown-option.selected {
-  background-color: #d3006b;
+  background: rgba(59,142,255,0.18);
+  color: var(--accent-hi);
 }
 
-/* Add these styles to your existing map dropdown CSS */
-
-.map-selector-container.disabled {
-  display: none;
-}
+.map-selector-container.disabled { display: none; }
 
 /* Loading Screen */
 #loading-screen {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: #000000;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: var(--bg-core);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -841,29 +951,53 @@ input::placeholder {
   transition: opacity 0.5s ease-in-out;
 }
 
+/* Matching ambient glow on loading screen */
+#loading-screen::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 65%, rgba(176, 38, 255, 0.15) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 35% at 22% 18%, rgba(0, 243, 255, 0.1) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 82% 22%, rgba(255, 0, 255, 0.1) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 25% at 50% 95%, rgba(176, 38, 255, 0.1) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
 .loading-title {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 900;
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-brand);
   font-size: 5rem;
   text-transform: uppercase;
-  color: #ffffff;
-  letter-spacing: 4px;
+  letter-spacing: 0.05em;
   margin-bottom: 10px;
-  text-shadow: 0px 5px 0px rgb(0, 0, 0);
+  color: #ffffff;
+  text-shadow: 
+    0 0 5px #fff,
+    0 0 10px #fff,
+    0 0 20px var(--neon-cyan),
+    0 0 40px var(--neon-cyan),
+    0 0 80px var(--neon-cyan);
 }
 
 .loading-subtitle {
-  font-family: 'Poppins', sans-serif;
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-ui);
   font-weight: 700;
-  font-size: 1.8rem;
+  font-size: 0.92rem;
   text-transform: uppercase;
-  letter-spacing: 10px;
-  color: #ffdae6;
+  letter-spacing: 0.35em;
+  color: var(--neon-magenta);
+  text-shadow: 0 0 10px var(--neon-magenta);
   margin-bottom: 40px;
-  text-shadow: 0px 3px 0px rgba(0, 0, 0, 0.7);
 }
 
 .loader-container {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -873,65 +1007,47 @@ input::placeholder {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 15px;
 }
 
 .bar {
-  width: 12px;
-  height: 50px;
-  background-color: #ff0080;
-  border-radius: 3px;
-  animation: barLoad 1.5s infinite ease-in-out;
+  width: 10px;
+  height: 48px;
+  background: var(--neon-cyan);
+  border-radius: var(--r-pill);
+  animation: barLoad 1.4s infinite ease-in-out;
   transform: scaleY(0.1);
-  box-shadow: 0 2px 0 #b30059;
+  box-shadow: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-cyan);
 }
 
-.bar:nth-child(1) {
-  animation-delay: 0s;
-}
-
-.bar:nth-child(2) {
-  animation-delay: 0.1s;
-}
-
-.bar:nth-child(3) {
-  animation-delay: 0.2s;
-}
-
-.bar:nth-child(4) {
-  animation-delay: 0.3s;
-}
-
-.bar:nth-child(5) {
-  animation-delay: 0.4s;
-}
+.bar:nth-child(1) { animation-delay: 0s; }
+.bar:nth-child(2) { animation-delay: 0.1s; }
+.bar:nth-child(3) { animation-delay: 0.2s; }
+.bar:nth-child(4) { animation-delay: 0.3s; }
+.bar:nth-child(5) { animation-delay: 0.4s; }
 
 @keyframes barLoad {
-  0%, 100% {
-    transform: scaleY(0.1);
-  }
-  50% {
-    transform: scaleY(1);
-  }
+  0%, 100% { transform: scaleY(0.1); }
+  50%       { transform: scaleY(1); }
 }
 
 .loading-text {
-  color: #ffffff;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 700;
-  font-size: 1.2rem;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 5px var(--neon-cyan);
+  font-family: var(--font-ui);
+  font-weight: 500;
+  font-size: 0.88rem;
+  letter-spacing: 0.08em;
 }
 
 /* Portrait orientation message */
 #rotate-message {
   display: none;
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: #000000;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: var(--bg-core);
   z-index: 10000;
   justify-content: center;
   align-items: center;
@@ -939,13 +1055,13 @@ input::placeholder {
 }
 
 .rotate-content {
-  color: white;
-  font-family: 'Poppins', sans-serif;
+  color: var(--text-mid);
+  font-family: var(--font-ui);
   font-weight: 600;
 }
 
 .rotate-icon {
-  font-size: 4rem;
+  font-size: 3.5rem;
   margin-bottom: 20px;
   animation: rotate 2s infinite linear;
   display: block;
@@ -953,92 +1069,68 @@ input::placeholder {
 
 @keyframes rotate {
   from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  to   { transform: rotate(360deg); }
 }
 
 .rotate-content p {
-  font-size: 1.8rem;
+  font-size: 1.5rem;
   margin: 0;
 }
 
 @media (max-width: 1000px) {
   input {
-    padding: 8px;
+    padding: 8px 12px;
     max-width: 180px;
-    margin-bottom: 0px;
-    box-shadow: 0px 3px 0px rgba(0, 0, 0, 1);
-    height: 40px;
-    font-size: 0.8rem;
+    margin-bottom: 0;
+    height: 38px;
+    font-size: 0.82rem;
   }
 
-  input::placeholder {
-    font-size: 0.8rem;
-  }
+  input::placeholder { font-size: 0.78rem; }
 
   #play-btn {
-    margin: 0px;
+    margin: 0;
     width: 180px;
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     min-height: 40px;
   }
 
-  .center-panel h3 {
-    margin: 0;
-  }
+  .center-panel h3 { margin: 0; }
 
-  .game-container {
-    width: 98%;
-    height: 98vh;
-  }
-  #car-model-container {
-    display: none;
-  }
+  .game-container { width: 98%; height: 98vh; }
+
+  #car-model-container { display: none; }
+
   .game-title {
     font-size: 2.2rem;
     position: fixed;
     left: 50%;
     transform: translateX(-50%);
     top: 10px;
-    -webkit-text-stroke: 2px #000;
-    text-shadow: 0px 3px 0px rgb(0, 0, 0);
   }
-  
-  .panel-title {
-    font-size: 1.3rem;
-    margin-bottom: 15px;
-  }
-  
+
+  .panel-title { margin-bottom: 10px; }
+
   .left-panel, .right-panel {
     width: 28%;
-    top: 0px;
+    top: 0;
   }
 
-  .right-panel {
-    width: 280px;
-  }
+  .right-panel { width: 280px; }
 
-  .code-input {
-    top: 10px;
-  }
-  
+  .code-input { top: 10px; }
+
   #join-code-input {
     width: 100%;
     max-width: 150px;
-    max-height: 40px;
-    font-size: 0.8rem;
+    max-height: 38px;
+    font-size: 0.78rem;
   }
 
-  #join-code-input::placeholder {
-    font-size: 0.8rem;
-  }
+  #join-code-input::placeholder { font-size: 0.78rem; }
 
-  .left-panel {
-    left: 10px;
-  }
-  
-  .right-panel {
-    right: 10px;
-  }
+  .left-panel  { left: 10px; }
+  .right-panel { right: 10px; }
 
   .center-panel {
     width: 40%;
@@ -1049,118 +1141,60 @@ input::placeholder {
     height: calc(100vh - 200px);
     overflow: visible;
   }
-  
-  .color-carousel h3, 
+
+  .color-carousel h3,
   .player-name-container h3,
-  .code-display h3, 
+  .code-display h3,
   .code-input h3,
   .join-section h3,
   .game-info h3 {
-    font-size: 1.2rem;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
-  
 
-  
   .play-btn, .game-btn, #host-start-btn {
-    height: 45px;
-    font-size: 0.9rem;
+    height: 44px;
+    font-size: 0.82rem;
     max-width: 200px;
-    margin-bottom: 10px;
-    box-shadow: 0 4px 0 #b30059;
-  }
-  
-  .color-options {
-    gap: 5px;
-  }
-  
-  .color-option {
-    width: 24px;
-    height: 24px;
-  }
-  
-  .code {
-    font-size: 1.5rem;
-    letter-spacing: 3px;
-  }
-
-  .code-box {
-    padding: 0px;
-    margin-bottom: 5px;
-  }
-
-  .code-instructions {
-    display: none;
-  }
-  
-  .player-list li {
-    font-size: 0.7rem;
-  }
-
-  .icon-btn {
-    padding: 6px 10px;
-    font-size: 0.7rem;
-  }
-  .dropdown-button, .dropdown-option {
-    font-size: 0.7rem;
-    padding: 8px 10px;
-  }
-  
-  .player-list li {
-    padding: 10px;
-    margin-bottom: 8px;
-    font-size: 0.9rem;
-  }
-  
-  .exit-button, .host-badge {
-    font-size: 0.7rem;
-    padding: 4px 8px;
-  }
-
-  .loading-text {
-    display: none;
-  }
-
-  .game-subtitle {
-    font-size: 1.1rem;
-    letter-spacing: 4px;
-    margin-top: 6px;
-  }
-
-  .loading-title {
-    font-size: 3rem;
-    text-shadow: 0px 3px 0px rgb(0, 0, 0);
     margin-bottom: 8px;
   }
 
-  .loading-subtitle {
-    font-size: 1.2rem;
-    letter-spacing: 6px;
-    margin-bottom: 28px;
-  }
+  .color-options { gap: 5px; }
+
+  .color-option { width: 22px; height: 22px; }
+
+  .code { font-size: 1.4rem; letter-spacing: 0.18em; }
+
+  .code-box { padding: 0; margin-bottom: 5px; }
+
+  .code-instructions { display: none; }
+
+  .player-list li { font-size: 0.80rem; padding: 10px; margin-bottom: 6px; }
+
+  .icon-btn { padding: 5px 9px; font-size: 0.72rem; }
+
+  .dropdown-button, .dropdown-option { font-size: 0.72rem; padding: 8px 10px; }
+
+  .exit-button, .host-badge { font-size: 0.66rem; padding: 3px 7px; }
+
+  .loading-text { display: none; }
+
+  .game-subtitle { font-size: 1.1rem; letter-spacing: 0.25em; margin-top: 6px; }
+
+  .loading-title { font-size: 3rem; margin-bottom: 8px; }
+
+  .loading-subtitle { font-size: 0.78rem; letter-spacing: 0.28em; margin-bottom: 28px; }
 }
 
 @media (max-width: 750px) {
-  .code-input {
-    right: 5px;
-  }
-  .right-panel {
-    right: 5px;
-    width: 180px;
-  }
+  .code-input { right: 5px; }
 
-  .panel-content {
-    padding: 25px 5px;
-  }
+  .right-panel { right: 5px; width: 180px; }
 
-  .left-panel {
-    left: 5px;
-  }
+  .panel-content { padding: 20px 5px; }
+
+  .left-panel { left: 5px; }
 }
 
 @media (max-height: 400px) {
-  .center-panel {
-    position: fixed;
-    top: 120px;
-  }
+  .center-panel { position: fixed; top: 120px; }
 }

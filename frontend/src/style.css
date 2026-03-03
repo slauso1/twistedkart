@@ -1,7 +1,7 @@
 html, body {
     margin: 0;
     padding: 0;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     overflow: hidden;
 }
 
@@ -80,7 +80,7 @@ html, body {
 }
 
 .speed-value {
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   font-size: 42px;
   font-weight: bold;
   color: #fff;
@@ -90,7 +90,7 @@ html, body {
 }
 
 .speed-unit {
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   font-size: 14px;
   color: #aaa;
   text-align: center;
@@ -198,14 +198,12 @@ html, body {
   box-shadow: 0 0 0 #b30059;
 }
 
-/* Loading Screen */
+/* Loading Screen — matches lobby design system */
 #loading-screen {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: #121212;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: #050508;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -214,30 +212,52 @@ html, body {
   transition: opacity 0.5s ease-in-out;
 }
 
+#loading-screen::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 65%, rgba(176, 38, 255, 0.15) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 35% at 22% 18%, rgba(0, 243, 255, 0.1) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 82% 22%, rgba(255, 0, 255, 0.1) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 25% at 50% 95%, rgba(176, 38, 255, 0.1) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
 .loading-title {
-  font-family: 'Poppins', sans-serif;
-  font-weight: 900;
+  position: relative;
+  z-index: 1;
+  font-family: 'Lilita One', sans-serif;
   font-size: 5rem;
   text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
   color: #ffffff;
-  -webkit-text-stroke: 3px #000;
-  letter-spacing: 4px;
-  margin-bottom: 12px;
-  text-shadow: 0px 5px 0px rgb(0, 0, 0);
+  text-shadow: 
+    0 0 5px #fff,
+    0 0 10px #fff,
+    0 0 20px #00f3ff,
+    0 0 40px #00f3ff,
+    0 0 80px #00f3ff;
 }
 
 .loading-subtitle {
-  font-family: 'Poppins', sans-serif;
+  position: relative;
+  z-index: 1;
+  font-family: 'Inter', system-ui, sans-serif;
   font-weight: 700;
-  font-size: 1.8rem;
+  font-size: 0.92rem;
   text-transform: uppercase;
-  color: #ffdae6;
-  letter-spacing: 10px;
+  letter-spacing: 0.35em;
+  color: #ff00ff;
+  text-shadow: 0 0 10px #ff00ff;
   margin-bottom: 40px;
-  text-shadow: 0px 3px 0px rgba(0, 0, 0, 0.7);
 }
 
 .loader-container {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -247,55 +267,38 @@ html, body {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 15px;
 }
 
 .bar {
-  width: 12px;
-  height: 50px;
-  background-color: #ff0080;
-  border-radius: 3px;
-  animation: barLoad 1.5s infinite ease-in-out;
+  width: 10px;
+  height: 48px;
+  background: #00f3ff;
+  border-radius: 99px;
+  animation: barLoad 1.4s infinite ease-in-out;
   transform: scaleY(0.1);
-  box-shadow: 0 2px 0 #b30059;
+  box-shadow: 0 0 10px #00f3ff, 0 0 20px #00f3ff;
 }
 
-.bar:nth-child(1) {
-  animation-delay: 0s;
-}
-
-.bar:nth-child(2) {
-  animation-delay: 0.1s;
-}
-
-.bar:nth-child(3) {
-  animation-delay: 0.2s;
-}
-
-.bar:nth-child(4) {
-  animation-delay: 0.3s;
-}
-
-.bar:nth-child(5) {
-  animation-delay: 0.4s;
-}
+.bar:nth-child(1) { animation-delay: 0s; }
+.bar:nth-child(2) { animation-delay: 0.1s; }
+.bar:nth-child(3) { animation-delay: 0.2s; }
+.bar:nth-child(4) { animation-delay: 0.3s; }
+.bar:nth-child(5) { animation-delay: 0.4s; }
 
 @keyframes barLoad {
-  0%, 100% {
-    transform: scaleY(0.1);
-  }
-  50% {
-    transform: scaleY(1);
-  }
+  0%, 100% { transform: scaleY(0.1); }
+  50%       { transform: scaleY(1); }
 }
 
 .loading-text {
-  color: #ffffff;
-  font-family: 'Poppins', sans-serif;
-  font-weight: 700;
-  font-size: 1.2rem;
-  -webkit-text-stroke: 1px #000;
+  color: #00f3ff;
+  text-shadow: 0 0 5px #00f3ff;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 0.88rem;
+  letter-spacing: 0.08em;
 }
 
 /* Mobile responsiveness for game screen */
@@ -315,7 +318,7 @@ html, body {
 
 .rotate-content {
   color: white;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   font-weight: 600;
 }
 
@@ -437,17 +440,20 @@ html, body {
 
 /* Health Bar */
 #health-container {
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(15, 10, 25, 0.4);
+  backdrop-filter: blur(12px);
   padding: 10px 15px;
   border-radius: 10px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(0, 243, 255, 0.3);
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.15), inset 0 0 10px rgba(0, 243, 255, 0.1);
   min-width: 250px;
 }
 
 .health-label {
   font-size: 0.8rem;
   font-weight: 700;
-  color: #fff;
+  color: #00f3ff;
+  text-shadow: 0 0 5px #00f3ff;
   margin-bottom: 5px;
   letter-spacing: 2px;
 }
@@ -456,10 +462,10 @@ html, body {
   position: relative;
   width: 100%;
   height: 30px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.5);
   border-radius: 5px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(0, 243, 255, 0.3);
 }
 
 .health-bar-inner {
@@ -467,7 +473,8 @@ html, body {
   left: 0;
   top: 0;
   height: 100%;
-  background: linear-gradient(90deg, #4ade80, #22c55e);
+  background: #00f3ff;
+  box-shadow: 0 0 10px #00f3ff;
   transition: width 0.3s ease, background-color 0.3s ease;
   border-radius: 5px;
 }
@@ -480,22 +487,25 @@ html, body {
   font-size: 1.2rem;
   font-weight: 700;
   color: #fff;
-  text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+  text-shadow: 0 0 5px #000, 0 0 10px #00f3ff;
 }
 
 /* Weapon Display */
 #weapon-container {
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(15, 10, 25, 0.4);
+  backdrop-filter: blur(12px);
   padding: 10px 15px;
   border-radius: 10px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 0, 255, 0.3);
+  box-shadow: 0 0 15px rgba(255, 0, 255, 0.15), inset 0 0 10px rgba(255, 0, 255, 0.1);
   min-width: 250px;
 }
 
 .weapon-label {
   font-size: 0.8rem;
   font-weight: 700;
-  color: #fff;
+  color: #ff00ff;
+  text-shadow: 0 0 5px #ff00ff;
   margin-bottom: 5px;
   letter-spacing: 2px;
 }
@@ -510,27 +520,31 @@ html, body {
 
 .weapon-icon {
   font-size: 2rem;
-  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5));
+  filter: drop-shadow(0 0 5px #ff00ff);
 }
 
 .weapon-name {
   font-weight: 700;
   letter-spacing: 1px;
+  text-shadow: 0 0 5px #ff00ff;
 }
 
 /* Score Display */
 #score-container {
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(15, 10, 25, 0.4);
+  backdrop-filter: blur(12px);
   padding: 10px 15px;
   border-radius: 10px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(176, 38, 255, 0.3);
+  box-shadow: 0 0 15px rgba(176, 38, 255, 0.15), inset 0 0 10px rgba(176, 38, 255, 0.1);
   min-width: 250px;
 }
 
 .score-label {
   font-size: 0.8rem;
   font-weight: 700;
-  color: #fff;
+  color: #b026ff;
+  text-shadow: 0 0 5px #b026ff;
   margin-bottom: 5px;
   letter-spacing: 2px;
 }
@@ -538,8 +552,8 @@ html, body {
 .score-value {
   font-size: 2rem;
   font-weight: 700;
-  color: #fbbf24;
-  text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+  color: #fff;
+  text-shadow: 0 0 10px #b026ff, 0 0 20px #b026ff;
 }
 
 /* Responsive Battle UI */
