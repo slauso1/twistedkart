@@ -1,0 +1,50 @@
+{
+  "id": "map1",
+  "name": "GLO Karts - Map 1",
+  "type": "race",
+  "version": 1,
+
+  "defaultLaps": 3,
+  "reverseAvailable": false,
+
+  "start": {
+    "position": { "x": 0, "y": 2.5, "z": 5 },
+    "heading": 0,
+    "kartsPerRow": 2,
+    "forwardsDistance": 2.0,
+    "sidewardsDistance": 3.0,
+    "upwardsDistance": 0.5
+  },
+
+  "checkpoints": [
+    {
+      "kind": "lap",
+      "p1": { "x": -5, "z": 5 },
+      "p2": { "x": 5, "z": 5 }
+    }
+  ],
+
+  "bounds": {
+    "min": { "x": -80, "y": -10, "z": -80 },
+    "max": { "x": 80,  "y": 50,  "z": 80 }
+  },
+
+  "rescueHeight": -5,
+
+  "itemBoxPositions": [
+    { "x": 0,  "y": 2, "z": -20 },
+    { "x": 10, "y": 2, "z": -40 },
+    { "x": -10,"y": 2, "z": -60 },
+    { "x": 5,  "y": 2, "z": 20 },
+    { "x": -5, "y": 2, "z": 40 },
+    { "x": 0,  "y": 2, "z": 60 },
+    { "x": 15, "y": 2, "z": 0 },
+    { "x": -15,"y": 2, "z": 0 }
+  ],
+
+  "scale": 8,
+  "model": "track.glb",
+  "decorations": "decorations.glb",
+  "gates": "gates.glb",
+  "outline": "track-outline.glb"
+}

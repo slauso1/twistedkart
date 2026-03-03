@@ -101,14 +101,19 @@ body::before {
 
 /* ─── Header / Title ──────────────────────────────────────── */
 .game-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   text-align: center;
-  padding: 16px 0 6px;
-  z-index: 10;
+  padding: 10px 0 0;
+  z-index: 20;
+  pointer-events: none;
 }
 
 .game-title {
   font-family: var(--font-brand);
-  font-size: clamp(3rem, 6vw, 5.5rem);
+  font-size: clamp(2rem, 4vw, 3.5rem);
   letter-spacing: 5px;
   line-height: 1;
   /* True Neon Sign Effect */
@@ -142,18 +147,24 @@ body::before {
 
 /* ─── Content area & panels ─────────────────────────────────── */
 .game-content {
-  display: block;
+  display: flex;
   flex: 1;
   position: relative;
-  height: 100%;
+  gap: 16px;
+  padding: 0 20px;
+  padding-top: 10px;
+  align-items: stretch;
+  overflow: hidden;
+  min-height: 0;
 }
 
 /* ── Glass panel mixin (applied to left / right) ── */
 .left-panel,
 .right-panel {
-  position: fixed;
-  top: 130px;
+  position: relative;
   width: 22%;
+  min-width: 220px;
+  flex-shrink: 0;
   border-radius: var(--r-panel);
   z-index: 10;
   background: var(--glass-fill);
@@ -161,24 +172,26 @@ body::before {
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
   border: 1px solid var(--glass-edge);
   box-shadow: var(--glass-shadow), var(--glass-spec);
-  overflow: visible;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-.left-panel  { left:  20px; }
-.right-panel { right: 20px; text-align: center; overflow: hidden; }
+.left-panel  { /* left column */ }
+.right-panel { text-align: center; overflow: hidden; }
 
 .center-panel {
   position: relative;
-  width: 40%;
-  margin: 0 auto;
-  height: 80vh;
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 8px;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   border-radius: var(--r-panel);
+  padding: 18px 20px;
 }
 
 .panel-content {
@@ -1103,20 +1116,16 @@ input::placeholder {
 
   .game-title {
     font-size: 2.2rem;
-    position: fixed;
-    left: 50%;
-    transform: translateX(-50%);
-    top: 10px;
   }
 
   .panel-title { margin-bottom: 10px; }
 
   .left-panel, .right-panel {
     width: 28%;
-    top: 0;
+    min-width: 180px;
   }
 
-  .right-panel { width: 280px; }
+  .right-panel { width: 280px; min-width: 280px; }
 
   .code-input { top: 10px; }
 
@@ -1129,16 +1138,10 @@ input::placeholder {
 
   #join-code-input::placeholder { font-size: 0.78rem; }
 
-  .left-panel  { left: 10px; }
-  .right-panel { right: 10px; }
+  .left-panel  { /* handled by flex */ }
+  .right-panel { /* handled by flex */ }
 
   .center-panel {
-    width: 40%;
-    position: fixed;
-    top: 80px;
-    left: 50%;
-    transform: translateX(-50%);
-    height: calc(100vh - 200px);
     overflow: visible;
   }
 
@@ -1188,13 +1191,13 @@ input::placeholder {
 @media (max-width: 750px) {
   .code-input { right: 5px; }
 
-  .right-panel { right: 5px; width: 180px; }
+  .right-panel { width: 180px; min-width: 180px; }
 
   .panel-content { padding: 20px 5px; }
 
-  .left-panel { left: 5px; }
+  .game-content { padding: 0 5px; gap: 8px; }
 }
 
 @media (max-height: 400px) {
-  .center-panel { position: fixed; top: 120px; }
+  .center-panel { /* stays in flex flow */ }
 }

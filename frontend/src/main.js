@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import "./style.css";
 import { createVehicle, updateSteering, resetCarPosition, updateCarPosition } from './modules/car.js';
-import { loadTrackModel, loadMapDecorations, checkGroundCollision } from './modules/track.js';
+import { loadTrackModel, loadMapDecorations } from './modules/track.js';
+import { loadTrackData, computeStartPositions, isOutOfBounds } from './modules/track-data.js';
 import { initPostProcessing } from './modules/post-processing.js';
 import { 
   loadGates, 
@@ -1103,6 +1104,16 @@ async function init() {
 
   // Load the track as a single model
   const mapToLoad = gameConfig?.trackId || 'map1';
+
+  // ── Load track metadata (start positions, bounds, etc.) ──────────────────
+  const trackData = await loadTrackData(mapToLoad);
+  const startPositions = computeStartPositions(trackData, 8);
+  // Determine this player's spawn index (from lobby spawnMap or default 0)
+  const mySpawnIdx = gameConfig?.spawnMap?.[localStorage.getItem('myPlayerId')] ?? 0;
+  const mySpawn = startPositions[mySpawnIdx] ?? startPositions[0];
+  console.log(`[track-data] Spawning at position #${mySpawnIdx}:`, mySpawn);
+  window.__trackData = trackData; // expose for debugging
+
   loadTrackModel(mapToLoad, scene, world, loadingManager, (trackModel) => {
     console.log(`Track model loaded (${mapToLoad}), extracting for minimap`);
     extractTrackData(trackModel);
@@ -1120,7 +1131,7 @@ async function init() {
 
   console.log('About to create vehicle physics');
 
-  // Create vehicle (physics body is immediate; model loads via callback)
+  // Create vehicle at the computed start position
   const carComponents = createVehicle(scene, world, debugObjects, (loadedComponents) => {
     carBody = loadedComponents.carBody;
     vehicle = loadedComponents.vehicle;
@@ -1138,7 +1149,7 @@ async function init() {
     }
 
     animate();
-  });
+  }, mySpawn);
 
   // Set physics body immediately so physics runs before model is ready
   carBody = carComponents.carBody;
@@ -1303,7 +1314,11 @@ function animate() {
       updateCarPosition(vehicle, carBody, carModel, wheelMeshes);
 
       // Add this line to check if car has fallen off the track
-      checkGroundCollision(carBody, () => {
+      // Use track-data bounds for smarter out-of-bounds detection
+      const carPos = carBody.translation();
+      const oob = isOutOfBounds(trackData, carPos);
+      if (oob) {
+        console.log('Car out of bounds – resetting');
         // This will reset the car to the last gate position when it falls off
         currentSteeringAngle = resetCarPosition(
           carBody,
@@ -1312,7 +1327,7 @@ function animate() {
           gateData.currentGatePosition,
           gateData.currentGateQuaternion
         );
-      });
+      }
 
       // Check if car is flipped
       if (carModel && !raceState.raceFinished) {

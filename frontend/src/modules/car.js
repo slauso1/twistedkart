@@ -27,13 +27,19 @@ const STEERING_RETURN_SPEED = 5.0;  // how fast it centres
 // ─────────────────────────────────────────────────────────────────────────────
 // createVehicle – builds Rapier chassis + vehicle controller, then loads model
 // Signature change: removed `ammo` and `physicsWorld` params, replaced with `world`
+// Added optional `startPos` param: { x, y, z, heading }
 // ─────────────────────────────────────────────────────────────────────────────
-export function createVehicle(scene, world, debugObjects, onCarLoaded) {
+export function createVehicle(scene, world, debugObjects, onCarLoaded, startPos = null) {
   console.log('Starting vehicle creation (Rapier)');
+
+  // Determine spawn position — use track-data start pos or fallback
+  const spawnX = startPos?.x ?? 0;
+  const spawnY = (startPos?.y ?? 3) + 2;  // +2m above surface for drop-in
+  const spawnZ = startPos?.z ?? 0;
 
   // ── Chassis rigid body ────────────────────────────────────────────
   const chassisDesc = RAPIER.RigidBodyDesc.dynamic()
-    .setTranslation(0, 5.2, 0)
+    .setTranslation(spawnX, spawnY, spawnZ)
     .setLinearDamping(0.05)
     .setAngularDamping(0.3);
   const carBody = world.createRigidBody(chassisDesc);
